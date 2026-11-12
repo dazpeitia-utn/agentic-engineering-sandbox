@@ -1,0 +1,16 @@
+{
+  "name": "04-autonomous-bug-fixer",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "openai": "^4.70.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}

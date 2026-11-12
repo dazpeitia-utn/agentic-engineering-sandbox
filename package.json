@@ -1,0 +1,12 @@
+{
+  "name": "agentic-engineering-sandbox",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "projects/*"
+  ],
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "tsx": "^4.0.0"
+  }
+}

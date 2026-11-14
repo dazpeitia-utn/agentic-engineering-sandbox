@@ -12,7 +12,9 @@ Un agente autónomo en **TypeScript** que implementa la arquitectura **Model Con
    El servidor MCP funciona de forma totalmente independiente al LLM, exponiendo esquemas validados con **Zod** para sus herramientas.
 3. **Descubrimiento Dinámico de Herramientas:** 
    El agente no tiene las herramientas hardcodeadas; al iniciar, consulta dinámicamente al servidor MCP qué capacidades tiene disponibles y las mapea al formato de OpenAI Tool Calling.
-4. **Bucle ReAct con Contexto Git:** 
+4. **Ejecución segura de Git:** 
+   El servidor usa `execFile("git", [...args])` sin shell y separa las rutas con `--`, así un `filePath` enviado por el modelo nunca se ejecuta como comando ni se interpreta como flag (ver `src/mcp-server/git.ts` y sus tests).
+5. **Bucle ReAct con Contexto Git:** 
    El agente inspecciona el estado actual de Git (`git status`) y analiza los cambios reales (`git diff`) para emitir una devolución técnica orientada a buenas prácticas y calidad de software.
 
 ---
@@ -37,7 +39,8 @@ Un agente autónomo en **TypeScript** que implementa la arquitectura **Model Con
 │   ├── client/
 │   │   └── mcpClient.ts      # Cliente MCP que gestiona la conexión con el servidor
 │   ├── mcp-server/
-│   │   └── server.ts         # Servidor MCP independiente que expone herramientas de Git
+│   │   ├── server.ts         # Servidor MCP independiente que expone herramientas de Git
+│   │   └── git.ts            # Ejecución segura de git (execFile, sin shell) + tests
 │   └── index.ts              # Punto de entrada de la aplicación
 ├── package.json              # Dependencias y scripts locales
 └── tsconfig.json             # Configuración de TypeScript orientada al monorepo

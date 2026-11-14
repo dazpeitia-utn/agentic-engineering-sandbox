@@ -1,21 +1,39 @@
 # 📚 Proyecto 03: RAG Docs Assistant
 
-Asistente técnico basado en **Retrieval-Augmented Generation (RAG)** diseñado para indexar dinámicamente la documentación de todos los proyectos del monorepo y responder consultas arquitectónicas o de implementación con precisión contextual.
+Asistente técnico basado en **Retrieval-Augmented Generation (RAG)** que indexa la documentación de todo el monorepo y responde preguntas citando las fuentes, sin inventar.
 
 ---
 
 ## 🏗️ Arquitectura del Sistema
 
-El proyecto implementa un pipeline RAG completo en TypeScript sin depender de bases de datos vectoriales externas pesadas, utilizando almacenamiento vectorial local en JSON y cálculo matemático directo:
+Pipeline RAG completo en TypeScript, sin base de datos vectorial externa (índice local en JSON):
 
-1. **Indexador Dinámico (`src/indexer/indexDocs.ts`):**
-   - Escanea automáticamente todos los subdirectorios dentro de `projects/` en busca de archivos `README.md` (escalable a cualquier cantidad de proyectos futuros).
-   - Fragmenta el contenido en bloques semánticos (*chunking*) y genera vectores de incrustación (*embeddings*) mediante el modelo `text-embedding-3-small` de OpenAI.
-   - Persiste los vectores y metadatos en `src/vector-db.json`.
+1. **Indexador (`src/indexer/`):**
+   - Busca todos los README: el de la raíz, `packages/*` y `projects/*` (cualquier proyecto nuevo se indexa solo).
+   - **Chunking por secciones de markdown** (`chunker.ts`): cada fragmento lleva su jerarquía de títulos (ej: `02 - MCP Git > Conceptos Clave`), así no pierde el contexto. Las secciones largas se parten con solapamiento y los `#` dentro de bloques de código no se toman como títulos.
+   - Genera los embeddings con `text-embedding-3-small` **en lotes** (un request por cada 100 fragmentos) y guarda en `src/vector-db.json` el modelo, la fecha y un hash de cada fuente.
 
-2. **Recuperador Semántico (`src/retriever/searchDocs.ts`):**
-   - Convierte la consulta del usuario en un vector utilizando el mismo espacio de embeddings.
-   - Calcula la **similitud de coseno** contra todos los fragmentos almacenados y recupera los `topK` resultados más relevantes.
+2. **Recuperación híbrida (`src/retriever/hybrid.ts` + `bm25.ts`):**
+   - **Semántica:** similitud coseno entre el embedding de la pregunta y los fragmentos.
+   - **Léxica:** **BM25** propio (normaliza acentos y saca stopwords), que encuentra términos exactos como nombres de tools o archivos, donde los embeddings suelen fallar.
+   - Los dos rankings se combinan con **Reciprocal Rank Fusion (RRF)**, sin tener que normalizar puntajes de escalas distintas.
 
-3. **Agente Generador (`src/agent/ragAgent.ts`):**
-   - Inyecta los fragmentos recuperados como contexto estricto en el prompt de `gpt-4o`, evitando alucinaciones y garantizando respuestas fundamentadas únicamente en la documentación del repositorio.
+3. **Re-ranking (`src/retriever/rerank.ts`):**
+   - Los 12 mejores candidatos pasan por el LLM, que puntúa de 0 a 10 la relevancia de cada uno con **salida estructurada (JSON Schema)**. Quedan los 4 mejores con relevancia ≥ 3.
+
+4. **Generación (`src/agent/ragAgent.ts`):**
+   - Responde solo con los fragmentos seleccionados, cita las fuentes (`[1]`, `[2]`...) y dice claramente cuando la respuesta no está en la documentación.
+
+5. **Detección de índice desactualizado:** al consultar, compara el hash de cada README con el del índice y avisa si hay que volver a indexar.
+
+---
+
+## ▶️ Uso
+
+```bash
+npm run index -w 03-rag-docs-assistant                                  # (re)indexa la documentación
+npm run ask -w 03-rag-docs-assistant -- "¿Qué bloquea readProjectFile?"  # pregunta con re-ranking
+npm run ask -w 03-rag-docs-assistant -- "pregunta" --no-rerank          # solo búsqueda híbrida
+```
+
+Los tests de `src/rag.test.ts` cubren el chunker, BM25, RRF y la búsqueda híbrida sin llamar a la API.

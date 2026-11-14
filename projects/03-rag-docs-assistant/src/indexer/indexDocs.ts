@@ -1,68 +1,70 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import OpenAI from "openai";
-import { createOpenAI } from "@sandbox/agent-core";
+import { pathToFileURL } from "node:url";
+import { createOpenAI, MONOREPO_ROOT } from "@sandbox/agent-core";
+import { DB_PATH, EMBEDDING_MODEL, type VectorDatabase } from "../vectorStore.js";
+import { chunkMarkdown, type Chunk } from "./chunker.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+export const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
 
-const DB_PATH = path.resolve(__dirname, "../vector-db.json");
-
-async function generateEmbedding(text: string, openai: OpenAI) {
-  const response = await openai.embeddings.create({
-    model: "text-embedding-3-small",
-    input: text,
-  });
-  return response.data[0].embedding;
+/** Todos los README del monorepo: raíz, packages/* y projects/*. */
+export async function findDocs(root: string = MONOREPO_ROOT): Promise<string[]> {
+  const docs = ["README.md"];
+  for (const dir of ["packages", "projects"]) {
+    const entries = await fs.readdir(path.join(root, dir), { withFileTypes: true }).catch(() => []);
+    for (const entry of entries.filter((e) => e.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) {
+      docs.push(`${dir}/${entry.name}/README.md`);
+    }
+  }
+  const existing: string[] = [];
+  for (const doc of docs) {
+    try {
+      await fs.access(path.join(root, doc));
+      existing.push(doc);
+    } catch {
+      console.warn(`⚠️ Omitiendo '${path.dirname(doc)}': no tiene README.md.`);
+    }
+  }
+  return existing;
 }
 
 export async function indexMonorepoDocs() {
   const openai = createOpenAI();
-  console.log("📚 [Indexer] Escaneando dinámicamente la documentación del monorepo...");
+  console.log("📚 [Indexer] Escaneando la documentación del monorepo...");
 
-  // Apuntamos directamente a la carpeta 'projects/'
-  const projectsDir = path.resolve(__dirname, "../../../");
-  const vectorDatabase: Array<{ title: string; content: string; embedding: number[] }> = [];
-
-  try {
-    // Leemos de forma dinámica todas las carpetas dentro de 'projects/'
-    const entries = await fs.readdir(projectsDir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        const projectName = entry.name;
-        const readmePath = path.join(projectsDir, projectName, "README.md");
-
-        try {
-          const content = await fs.readFile(readmePath, "utf-8");
-          const chunks = content.split("\n\n").filter((chunk) => chunk.trim().length > 20);
-
-          console.log(`🔍 Procesando ${projectName} (${chunks.length} fragmentos encontrados)...`);
-
-          for (const chunk of chunks) {
-            const embedding = await generateEmbedding(chunk, openai);
-            vectorDatabase.push({
-              title: projectName,
-              content: chunk,
-              embedding,
-            });
-          }
-        } catch {
-          // Si una carpeta no tiene README.md (como node_modules o algún experimento sin doc), la ignoramos silenciosamente
-          console.warn(`⚠️ Omitiendo '${projectName}': No se encontró README.md.`);
-        }
-      }
-    }
-  } catch (error: any) {
-    console.error(`❌ Error al leer el directorio de proyectos: ${error.message}`);
+  const sources: Record<string, string> = {};
+  const chunks: Chunk[] = [];
+  for (const doc of await findDocs()) {
+    const content = await fs.readFile(path.join(MONOREPO_ROOT, doc), "utf-8");
+    sources[doc] = sha256(content);
+    const docChunks = chunkMarkdown(content, doc);
+    chunks.push(...docChunks);
+    console.log(`🔍 ${doc}: ${docChunks.length} fragmentos`);
   }
 
-  // Guardamos la base de datos vectorial local
-  await fs.writeFile(DB_PATH, JSON.stringify(vectorDatabase, null, 2));
-  console.log(`✅ [Indexer] Indexación completada. Base vectorial guardada en vector-db.json (${vectorDatabase.length} fragmentos totales).`);
+  // Un solo request por lote en vez de uno por fragmento.
+  const embeddings: number[][] = [];
+  for (let i = 0; i < chunks.length; i += 100) {
+    const batch = chunks.slice(i, i + 100);
+    const response = await openai.embeddings.create({ model: EMBEDDING_MODEL, input: batch.map((c) => c.content) });
+    embeddings.push(...response.data.sort((a, b) => a.index - b.index).map((d) => d.embedding));
+  }
+
+  const db: VectorDatabase = {
+    embeddingModel: EMBEDDING_MODEL,
+    createdAt: new Date().toISOString(),
+    sources,
+    chunks: chunks.map((c, i) => ({ ...c, embedding: embeddings[i] })),
+  };
+  await fs.writeFile(DB_PATH, JSON.stringify(db));
+  console.log(`✅ [Indexer] ${db.chunks.length} fragmentos de ${Object.keys(sources).length} documentos guardados en vector-db.json.`);
 }
 
-indexMonorepoDocs().catch((err) => {
-  console.error("❌ Error fatal en el indexador:", err);
-  process.exit(1);
-});
+// Solo indexamos al correrlo como script (npm run index), no al importarlo.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  indexMonorepoDocs().catch((err) => {
+    console.error("❌ Error fatal en el indexador:", err);
+    process.exit(1);
+  });
+}

@@ -1,10 +1,4 @@
-import dotenv from "dotenv";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { askRagAgent } from "./agent/ragAgent.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 async function main() {
   const query = process.argv[2] || "¿Cómo funciona el servidor MCP de Git en el proyecto 2?";

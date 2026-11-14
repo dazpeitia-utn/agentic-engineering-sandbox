@@ -1,0 +1,18 @@
+{
+  "name": "@sandbox/agent-core",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Piezas compartidas para los agentes del monorepo: loop ReAct, tools, cliente LLM y adaptador MCP.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "dotenv": "^18.0.10",
+    "openai": "^7.57.0"
+  }
+}

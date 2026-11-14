@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "dotenv": "^18.0.10",
-    "openai": "^7.57.0",
+    "@sandbox/agent-core": "*",
+    "tsx": "^4.23.15",
     "zod": "^3.25.76"
   }
 }

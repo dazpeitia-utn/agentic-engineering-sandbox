@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import OpenAI from "openai";
+import { createOpenAI } from "@sandbox/agent-core";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = path.resolve(__dirname, "../vector-db.json");
@@ -20,8 +20,7 @@ function cosineSimilarity(vecA: number[], vecB: number[]): number {
 }
 
 export async function searchRelevantDocs(query: string, topK: number = 3) {
-  // Instanciamos OpenAI aquí adentro para que process.env.OPENAI_API_KEY ya esté disponible
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = createOpenAI();
 
   try {
     const dbRaw = await fs.readFile(DB_PATH, "utf-8");

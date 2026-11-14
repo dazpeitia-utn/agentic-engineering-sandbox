@@ -1,13 +1,7 @@
-import dotenv from "dotenv";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { runBugFixerAgent } from "./agent/bugFixerAgent.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
-
 async function main() {
-  const bugReport = 
+  const bugReport =
     "Fallo en test unitario: la función `calculateTotal(100, 20)` esperaba recibir `120`, " +
     "pero el resultado devuelto fue `80`. El archivo a revisar es `src/buggyCode.ts`.";
 
@@ -18,4 +12,7 @@ async function main() {
   console.log(result);
 }
 
-main().catch(console.error);
+main().catch((error) => {
+  console.error("❌ Error en la ejecución:", error);
+  process.exit(1);
+});

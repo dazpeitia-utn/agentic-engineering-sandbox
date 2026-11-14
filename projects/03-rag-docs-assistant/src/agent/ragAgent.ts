@@ -1,9 +1,8 @@
-import OpenAI from "openai";
+import { createOpenAI, defaultModel } from "@sandbox/agent-core";
 import { searchRelevantDocs } from "../retriever/searchDocs.js";
 
-// ¡La palabra 'export' es obligatoria aquí!
 export async function askRagAgent(question: string) {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = createOpenAI();
 
   console.log(`🔎 [RAG] Buscando información relevante en el monorepo para: "${question}"...`);
   const relevantDocs = await searchRelevantDocs(question, 3);
@@ -12,10 +11,10 @@ export async function askRagAgent(question: string) {
     .map((doc, idx) => `[Fragmento ${idx + 1} - Fuente: ${doc.title}]\n${doc.content}`)
     .join("\n\n---\n\n");
 
-  console.log(`📄 [RAG] Fragmentos encontrados: ${relevantDocs.length}. Generando respuesta con GPT-4o...\n`);
+  console.log(`📄 [RAG] Fragmentos encontrados: ${relevantDocs.length}. Generando respuesta...\n`);
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: defaultModel(),
     messages: [
       {
         role: "system",

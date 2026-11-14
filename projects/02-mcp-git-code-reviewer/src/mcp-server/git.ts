@@ -22,6 +22,14 @@ export function validateRepoPath(filePath: string): string {
   return filePath;
 }
 
+/** Valida un ref (rama, tag, sha, HEAD~2...) para que no pueda ser un flag. */
+export function validateRef(ref: string): string {
+  if (!/^[A-Za-z0-9][\w./@^~{}-]*$/.test(ref) || ref.includes("..")) {
+    throw new Error(`Ref inválido: "${ref}".`);
+  }
+  return ref;
+}
+
 export async function gitStatus(cwd?: string): Promise<string> {
   return (await runGit(["status", "--short"], cwd)) || "El directorio de trabajo está limpio (sin cambios).";
 }
@@ -32,4 +40,16 @@ export async function gitDiff(options: { staged?: boolean; filePath?: string }, 
   // `--` separa opciones de rutas: lo que venga después nunca es un flag.
   if (options.filePath) args.push("--", validateRepoPath(options.filePath));
   return (await runGit(args, cwd)) || "No hay diferencias (diff vacío) para los parámetros indicados.";
+}
+
+/** Diff entre dos commits (lo que se va a pushear). */
+export async function gitRangeDiff(base: string, head: string, cwd?: string): Promise<string> {
+  const range = `${validateRef(base)}..${validateRef(head)}`;
+  return (await runGit(["diff", "--end-of-options", range], cwd)) || "No hay diferencias entre esos commits.";
+}
+
+/** Mensajes de los commits entre `base` y `head`. */
+export async function gitLog(base: string, head: string, cwd?: string): Promise<string> {
+  const range = `${validateRef(base)}..${validateRef(head)}`;
+  return (await runGit(["log", "--format=%h %s%n%b", "--end-of-options", range], cwd)) || "No hay commits en ese rango.";
 }

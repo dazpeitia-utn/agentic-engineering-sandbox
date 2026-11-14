@@ -1,0 +1,6 @@
+#!/bin/sh
+# Code review con IA (proyecto 02) antes de cada push.
+# Instalar:   npm run hooks:install
+# Saltear:    git push --no-verify   o   SKIP_AI_REVIEW=1 git push
+ROOT="$(git rev-parse --show-toplevel)"
+exec node --import tsx "$ROOT/projects/02-mcp-git-code-reviewer/src/prePush.ts" "$@"

@@ -16,6 +16,23 @@ Un agente autónomo en **TypeScript** que implementa la arquitectura **Model Con
    El servidor usa `execFile("git", [...args])` sin shell y separa las rutas con `--`, así un `filePath` enviado por el modelo nunca se ejecuta como comando ni se interpreta como flag (ver `src/mcp-server/git.ts` y sus tests).
 5. **Bucle ReAct con Contexto Git:** 
    El agente inspecciona el estado actual de Git (`git status`) y analiza los cambios reales (`git diff`) para emitir una devolución técnica orientada a buenas prácticas y calidad de software.
+6. **Git hook `pre-push` con veredicto:** 
+   Antes de cada push, el agente revisa **los commits que se van a pushear** (`get_commit_log` + `get_range_diff`) y termina con `VEREDICTO: APROBADO` o `VEREDICTO: BLOQUEAR`. Si bloquea, el push se cancela. Si el revisor falla (sin API key, error de red), el push **no** se bloquea.
+
+---
+
+## ▶️ Uso
+
+```bash
+npm start -w 02-mcp-git-code-reviewer                          # revisa los cambios locales sin commitear
+npm start -w 02-mcp-git-code-reviewer -- origin/main HEAD      # revisa los commits entre dos refs
+
+npm run hooks:install      # activa el hook pre-push (git config core.hooksPath .githooks)
+npm run hooks:uninstall    # lo desactiva
+git push --no-verify       # saltea el hook una vez (o SKIP_AI_REVIEW=1 git push)
+```
+
+Cada push con el hook activo hace llamadas a la API de OpenAI.
 
 ---
 
@@ -35,12 +52,14 @@ Un agente autónomo en **TypeScript** que implementa la arquitectura **Model Con
 02-mcp-git-code-reviewer/
 ├── src/
 │   ├── agent/
-│   │   └── agent.ts          # Bucle ReAct del agente y orquestación con OpenAI
+│   │   ├── agent.ts          # Configura el revisor y lo corre con runAgent() de agent-core
+│   │   └── verdict.ts        # Parseo del veredicto y del input del hook pre-push
 │   ├── client/
 │   │   └── mcpClient.ts      # Cliente MCP que gestiona la conexión con el servidor
 │   ├── mcp-server/
 │   │   ├── server.ts         # Servidor MCP independiente que expone herramientas de Git
 │   │   └── git.ts            # Ejecución segura de git (execFile, sin shell) + tests
+│   ├── prePush.ts            # Entrada del hook pre-push (../../.githooks/pre-push)
 │   └── index.ts              # Punto de entrada de la aplicación
 ├── package.json              # Dependencias y scripts locales
 └── tsconfig.json             # Configuración de TypeScript orientada al monorepo

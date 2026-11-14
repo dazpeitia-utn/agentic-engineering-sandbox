@@ -16,7 +16,7 @@ export class GitMcpClient {
     return this.client;
   }
 
-  async connect(cwd: string = process.cwd()) {
+  async connect(cwd: string = process.cwd(), quiet = false) {
     const serverScriptPath = path.resolve(__dirname, "../mcp-server/server.ts");
     // Ejecutamos tsx con el mismo Node, sin depender de npx ni del PATH.
     const tsxCli = require.resolve("tsx/cli");
@@ -28,14 +28,14 @@ export class GitMcpClient {
     });
 
     await this.client.connect(this.transport);
-    console.log("🔗 [MCP Client] Conectado exitosamente al servidor MCP de Git.");
+    if (!quiet) console.log("🔗 [MCP Client] Conectado exitosamente al servidor MCP de Git.");
   }
 
-  async disconnect() {
+  async disconnect(quiet = false) {
     if (this.transport) {
       await this.transport.close();
       this.transport = null;
-      console.log("🔌 [MCP Client] Desconectado del servidor MCP.");
+      if (!quiet) console.log("🔌 [MCP Client] Desconectado del servidor MCP.");
     }
   }
 }

@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { gitDiff, gitStatus } from "./git.js";
+import { gitDiff, gitLog, gitRangeDiff, gitStatus } from "./git.js";
 
 const server = new McpServer({
   name: "git-code-reviewer-server",
@@ -36,6 +36,34 @@ server.tool(
       return text(await gitDiff({ staged, filePath }));
     } catch (error: any) {
       return errorText(`Error ejecutando git diff: ${error.message}`);
+    }
+  }
+);
+
+const refSchema = z.string().describe("Commit, rama o tag (ej: origin/main, HEAD, a1b2c3d).");
+
+server.tool(
+  "get_range_diff",
+  "Obtiene el diff entre dos commits (por ejemplo, lo que se va a pushear: base = remoto, head = local).",
+  { base: refSchema, head: refSchema },
+  async ({ base, head }) => {
+    try {
+      return text(await gitRangeDiff(base, head));
+    } catch (error: any) {
+      return errorText(`Error ejecutando git diff: ${error.message}`);
+    }
+  }
+);
+
+server.tool(
+  "get_commit_log",
+  "Lista los mensajes de los commits entre dos refs, para entender la intención de los cambios.",
+  { base: refSchema, head: refSchema },
+  async ({ base, head }) => {
+    try {
+      return text(await gitLog(base, head));
+    } catch (error: any) {
+      return errorText(`Error ejecutando git log: ${error.message}`);
     }
   }
 );

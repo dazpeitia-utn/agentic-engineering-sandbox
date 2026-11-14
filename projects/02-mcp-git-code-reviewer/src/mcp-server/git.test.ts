@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { gitDiff, gitStatus, validateRepoPath } from "./git.js";
+import { gitDiff, gitLog, gitRangeDiff, gitStatus, validateRef, validateRepoPath } from "./git.js";
 
 let repo: string;
 
@@ -39,5 +39,24 @@ describe("git tools", () => {
 
   it("rechaza rutas que parecen flags", () => {
     expect(() => validateRepoPath("--output=/tmp/x")).toThrow(/no puede empezar/);
+  });
+
+  it("muestra diff y log entre commits", async () => {
+    const git = (...args: string[]) => execFileSync("git", args, { cwd: repo }).toString().trim();
+    const base = git("rev-parse", "HEAD");
+    await fs.writeFile(path.join(repo, "a.txt"), "tres\n");
+    git("commit", "-q", "-am", "cambia a");
+    expect(await gitRangeDiff(base, "HEAD", repo)).toMatch(/\+tres/);
+    expect(await gitLog(base, "HEAD", repo)).toMatch(/cambia a/);
+  });
+
+  it.each(["--output=/tmp/x", "HEAD..evil", "a b", "$(touch x)", ""])("rechaza refs inválidos: %j", (ref) => {
+    expect(() => validateRef(ref)).toThrow(/Ref inválido/);
+  });
+
+  it("acepta refs comunes", () => {
+    for (const ref of ["HEAD", "HEAD~2", "origin/main", "a1b2c3d", "v1.0.0", "feat/x-y", "main@{1}"]) {
+      expect(validateRef(ref)).toBe(ref);
+    }
   });
 });

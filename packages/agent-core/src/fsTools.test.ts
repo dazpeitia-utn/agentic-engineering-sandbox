@@ -51,6 +51,13 @@ describe("createFsTools", () => {
     await expect(write.execute({ filePath: "../outside/pwn.txt", content: "x" })).rejects.toThrow(/Acceso denegado/);
   });
 
+  it("respeta canWrite", async () => {
+    const [, write] = createFsTools({ rootDir: root, canWrite: (p) => p.endsWith(".test.ts") });
+    await write.execute({ filePath: "src/a.test.ts", content: "ok" });
+    await expect(write.execute({ filePath: "src/a.ts", content: "pisado" })).rejects.toThrow(/permiso/);
+    expect(await fs.readFile(path.join(root, "src", "a.ts"), "utf-8")).toBe("export const a = 1;");
+  });
+
   it("con allowWrite=false solo expone read_file", () => {
     expect(createFsTools({ rootDir: root, allowWrite: false }).map((t) => t.name)).toEqual(["read_file"]);
   });

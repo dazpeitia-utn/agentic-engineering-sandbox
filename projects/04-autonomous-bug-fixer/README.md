@@ -8,9 +8,19 @@ Agente autónomo de ingeniería de software desarrollado en TypeScript y impulsa
 
 El sistema implementa un loop de razonamiento agéntico cerrado (*Agentic Loop*):
 
-1. **Definición del Bug (`src/buggyCode.ts`):** Contiene código con un error lógico intencional (por ejemplo, una operación matemática incorrecta) para evaluar la capacidad de depuración del agente.
-2. **Herramientas de archivos (`createFsTools` de [`agent-core`](../../packages/agent-core)):** `read_file` y `write_file`, limitadas a la carpeta del proyecto: el agente no puede leer ni escribir fuera de ella.
+1. **Definición del Bug (`src/buggyCode.ts` + `src/buggyCode.test.ts`):** Código con un error lógico intencional y un test real que lo detecta. El test falla a propósito, por eso está excluido del `npm test` de la raíz.
+2. **Herramientas ([`agent-core`](../../packages/agent-core)):** `read_file` / `write_file` limitadas a la carpeta del proyecto (sin permiso para modificar tests) y `run_tests` para ejecutar Vitest.
 3. **Motor del Agente (`src/agent/bugFixerAgent.ts`):** 
    - Configura un prompt de sistema especializado en depuración en TypeScript.
    - Corre el loop ReAct compartido (`runAgent` de agent-core): procesa la respuesta del LLM, ejecuta las `tool_calls` y devuelve los resultados al modelo hasta que termina, con un máximo de 8 iteraciones.
-4. **Punto de Entrada (`src/index.ts`):** Inyecta el reporte de error inicial y dispara el proceso del agente.
+4. **Flujo completo:**
+   - **Captura:** corre el test y le pasa al agente la salida real de Vitest (assertion + stack trace), no un reporte escrito a mano.
+   - **Aislamiento y parche:** el agente ubica el archivo y la línea en el stack trace, lo lee y aplica el parche.
+   - **Validación:** el agente corre `run_tests`, y al final el programa vuelve a correr los tests por su cuenta; sale con código 1 si siguen fallando.
+
+## ▶️ Uso
+
+```bash
+npm start -w 04-autonomous-bug-fixer   # captura el fallo, parchea y valida
+npm run reset -w 04-autonomous-bug-fixer   # restaura el bug de demo para volver a probar
+```

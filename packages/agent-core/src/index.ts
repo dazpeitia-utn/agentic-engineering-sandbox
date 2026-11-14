@@ -11,3 +11,4 @@ export {
   type RunAgentOptions,
 } from "./agentLoop.js";
 export { loadMcpTools } from "./mcp.js";
+export { runVitest, createRunTestsTool, type TestRunResult } from "./testRunner.js";

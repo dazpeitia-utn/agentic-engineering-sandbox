@@ -5,7 +5,8 @@ Piezas compartidas por los agentes del monorepo. Cualquier proyecto nuevo lo usa
 | Export | Para qué sirve |
 |--------|----------------|
 | `runAgent(options)` | Loop ReAct: llama al modelo, ejecuta las tools que pide y le devuelve los resultados. Corta en `maxIterations` (default 10), maneja JSON inválido, tools inexistentes y errores de tools sin romper, y trunca salidas largas. |
-| `createFsTools({ rootDir, allowWrite })` | Tools `read_file` / `write_file` limitadas a `rootDir` (rechaza `..`, rutas absolutas y symlinks hacia afuera). |
+| `createFsTools({ rootDir, allowWrite, canWrite })` | Tools `read_file` / `write_file` limitadas a `rootDir` (rechaza `..`, rutas absolutas y symlinks hacia afuera). `canWrite` filtra qué archivos puede escribir el agente. |
+| `createRunTestsTool({ rootDir })` / `runVitest(rootDir, file)` | Tool `run_tests` para que el agente ejecute Vitest y lea el resultado (con stack traces); `runVitest` sirve para verificar desde el código. |
 | `loadMcpTools(client)` | Descubre las tools de un servidor MCP y las adapta para `runAgent`. |
 | `createOpenAI()` / `defaultModel()` | Cliente OpenAI validando la API key; modelo configurable con `OPENAI_MODEL` (default `gpt-4o`). |
 | `loadEnv()` / `requireEnv(name)` | Carga el `.env` único de la raíz del monorepo. |

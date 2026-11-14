@@ -5,6 +5,10 @@ node_modules/
 .env
 **/.env
 
+# Bases de datos vectoriales locales (RAG)
+vector-db.json
+**/vector-db.json
+
 # Compilación y temporales
 dist/
 build/

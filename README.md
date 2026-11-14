@@ -27,4 +27,5 @@ cp .env.example .env # completá OPENAI_API_KEY (un único .env para todo el mon
 npm install          # instala todos los workspaces
 npm run typecheck    # chequeo de tipos de todos los proyectos
 npm test             # tests unitarios (vitest)
+npm run hooks:install  # (opcional) code review con IA en cada git push, ver proyecto 02
 ```

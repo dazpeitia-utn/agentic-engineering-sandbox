@@ -12,3 +12,22 @@ export {
 } from "./agentLoop.js";
 export { loadMcpTools } from "./mcp.js";
 export { runVitest, createRunTestsTool, type TestRunResult } from "./testRunner.js";
+export {
+  StateGraph,
+  CompiledGraph,
+  START,
+  END,
+  appendReducer,
+  MemoryCheckpointer,
+  FileCheckpointer,
+  GraphRecursionError,
+  type Reducer,
+  type Reducers,
+  type NodeFn,
+  type Router,
+  type Checkpoint,
+  type Checkpointer,
+  type StepEvent,
+  type RunOptions,
+} from "./graph.js";
+export { generateStructured, type StructuredOptions } from "./structured.js";

@@ -11,12 +11,13 @@ Monorepo de proyectos de agentes y servidores MCP.
 | 03 | RAG Docs Assistant | [`projects/03-rag-docs-assistant`](projects/03-rag-docs-assistant) |
 | 04 | Autonomous Bug Fixer | [`projects/04-autonomous-bug-fixer`](projects/04-autonomous-bug-fixer) |
 | 05 | MCP Advanced Server | [`projects/05-mcp-advanced-server`](projects/05-mcp-advanced-server) |
+| 06 | Multi-Agent Orchestrator (grafo propio + LangGraph) | [`projects/06-multi-agent-orchestrator`](projects/06-multi-agent-orchestrator) |
 
 ## Paquetes compartidos
 
 | Paquete | Qué aporta |
 |---------|------------|
-| [`packages/agent-core`](packages/agent-core) | Loop ReAct con límite de iteraciones, tools de archivos limitadas a una carpeta, cliente OpenAI, carga del `.env` y adaptador de tools MCP. Lo usan 01, 02, 03 y 04. |
+| [`packages/agent-core`](packages/agent-core) | Loop ReAct con límite de iteraciones, tools de archivos limitadas a una carpeta, `run_tests` (Vitest), salida estructurada, motor de grafos de estado con checkpoints, cliente OpenAI, carga del `.env` y adaptador de tools MCP. Lo usan todos los proyectos. |
 
 ## Setup
 

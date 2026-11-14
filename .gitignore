@@ -16,3 +16,5 @@ build/
 
 # Sistema operativo
 .DS_Store
+# Corridas del orquestador multiagente (proyecto 06)
+projects/06-multi-agent-orchestrator/workspace/

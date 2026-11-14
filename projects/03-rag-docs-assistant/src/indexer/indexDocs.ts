@@ -2,10 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import OpenAI from "openai";
-import dotenv from "dotenv";
+import { createOpenAI } from "@sandbox/agent-core";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const DB_PATH = path.resolve(__dirname, "../vector-db.json");
 
@@ -18,11 +17,7 @@ async function generateEmbedding(text: string, openai: OpenAI) {
 }
 
 export async function indexMonorepoDocs() {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("Falta OPENAI_API_KEY en el archivo .env de 03-rag-docs-assistant");
-  }
-
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = createOpenAI();
   console.log("📚 [Indexer] Escaneando dinámicamente la documentación del monorepo...");
 
   // Apuntamos directamente a la carpeta 'projects/'

@@ -18,9 +18,9 @@ Un agente autónomo desarrollado en **TypeScript** que utiliza el bucle de ejecu
 ## 🛠️ Stack Tecnológico y Librerías
 
 * **Lenguaje:** TypeScript (con configuración estricta en NodeNext).
-* **Orquestación de IA:** OpenAI SDK (`gpt-4o`).
+* **Orquestación de IA:** [`@sandbox/agent-core`](../../packages/agent-core) (loop ReAct + tools de archivos) sobre OpenAI SDK (`gpt-4o`).
 * **Ejecución en Tiempo de Real:** `tsx` para correr TypeScript directamente sin compilación previa manual.
-* **Entorno:** Manejo de variables de entorno con `dotenv`.
+* **Entorno:** `.env` único en la raíz del monorepo, cargado por `agent-core`.
 * **Framework de Testing Objetivo:** Vitest / Jest.
 
 ---
@@ -30,11 +30,9 @@ Un agente autónomo desarrollado en **TypeScript** que utiliza el bucle de ejecu
 ```text
 01-agent-unit-tester/
 ├── src/
-│   ├── agent.ts         # Contiene la implementación del bucle ReAct y el orquestador con OpenAI
-│   ├── tools.ts         # Implementación de las funciones de lectura y escritura de archivos locales
-│   ├── prompt.ts        # System prompts y esquemas JSON Schema de las herramientas
+│   ├── agent.ts         # Configura el agente y lo corre con runAgent() de agent-core
+│   ├── prompt.ts        # System prompt del agente
 │   ├── math.ts          # Código fuente de ejemplo a probar
 │   └── index.ts         # Punto de entrada para ejecutar el agente
-├── .env                 # Variables de entorno (OPENAI_API_KEY)
 ├── package.json         # Dependencias locales del proyecto
 └── tsconfig.json        # Configuración de TypeScript

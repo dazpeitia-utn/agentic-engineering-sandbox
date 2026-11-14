@@ -21,7 +21,7 @@ Un agente autónomo en **TypeScript** que implementa la arquitectura **Model Con
 
 * **Lenguaje:** TypeScript (con NodeNext y tipado estricto).
 * **Protocolo de IA:** `@modelcontextprotocol/sdk` (Cliente y Servidor MCP).
-* **Orquestación de IA:** OpenAI SDK (`gpt-4o`).
+* **Orquestación de IA:** [`@sandbox/agent-core`](../../packages/agent-core) (`runAgent` + `loadMcpTools`) sobre OpenAI SDK (`gpt-4o`).
 * **Validación de Esquemas:** Zod.
 * **Ejecución:** `tsx` para desarrollo en tiempo real.
 
@@ -39,6 +39,5 @@ Un agente autónomo en **TypeScript** que implementa la arquitectura **Model Con
 │   ├── mcp-server/
 │   │   └── server.ts         # Servidor MCP independiente que expone herramientas de Git
 │   └── index.ts              # Punto de entrada de la aplicación
-├── .env                      # Variables de entorno (OPENAI_API_KEY)
 ├── package.json              # Dependencias y scripts locales
 └── tsconfig.json             # Configuración de TypeScript orientada al monorepo

@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
-    "dotenv": "^18.0.10",
+    "@sandbox/agent-core": "*",
     "openai": "^7.57.0"
   }
 }

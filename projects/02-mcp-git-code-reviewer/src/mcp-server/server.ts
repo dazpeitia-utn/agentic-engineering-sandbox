@@ -1,15 +1,15 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
 import { z } from "zod";
-
-const execAsync = promisify(exec);
+import { gitDiff, gitStatus } from "./git.js";
 
 const server = new McpServer({
   name: "git-code-reviewer-server",
   version: "1.0.0",
 });
+
+const text = (t: string) => ({ content: [{ type: "text" as const, text: t }] });
+const errorText = (t: string) => ({ isError: true, ...text(t) });
 
 server.tool(
   "get_git_status",
@@ -17,20 +17,9 @@ server.tool(
   {},
   async () => {
     try {
-      const { stdout } = await execAsync("git status --short");
-      return {
-        content: [
-          {
-            type: "text",
-            text: stdout.trim() || "El directorio de trabajo está limpio (sin cambios).",
-          },
-        ],
-      };
+      return text(await gitStatus());
     } catch (error: any) {
-      return {
-        isError: true,
-        content: [{ type: "text", text: `Error ejecutando git status: ${error.message}` }],
-      };
+      return errorText(`Error ejecutando git status: ${error.message}`);
     }
   }
 );
@@ -44,23 +33,9 @@ server.tool(
   },
   async ({ staged, filePath }) => {
     try {
-      const flag = staged ? "--staged" : "";
-      const target = filePath ? `-- ${filePath}` : "";
-      const { stdout } = await execAsync(`git diff ${flag} ${target}`.trim());
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: stdout.trim() || "No hay diferencias (diff vacío) para los parámetros indicados.",
-          },
-        ],
-      };
+      return text(await gitDiff({ staged, filePath }));
     } catch (error: any) {
-      return {
-        isError: true,
-        content: [{ type: "text", text: `Error ejecutando git diff: ${error.message}` }],
-      };
+      return errorText(`Error ejecutando git diff: ${error.message}`);
     }
   }
 );

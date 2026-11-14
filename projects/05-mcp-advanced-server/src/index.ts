@@ -8,7 +8,8 @@ import {
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import * as fs from "fs/promises";
+import { MONOREPO_ROOT } from "@sandbox/agent-core";
+import { getMonorepoInfo, readProjectFile } from "./files.js";
 
 // Inicializamos el servidor MCP
 const server = new Server(
@@ -41,12 +42,7 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   if (request.params.uri === "config://monorepo-info") {
-    const info = {
-      name: "agentic-engineering-sandbox",
-      version: "1.0.0",
-      activeProjects: 5,
-      stack: ["Node.js", "TypeScript", "MCP", "OpenAI"],
-    };
+    const info = await getMonorepoInfo(MONOREPO_ROOT);
     return {
       contents: [
         {
@@ -103,13 +99,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "readProjectFile",
-        description: "Lee un archivo de texto dentro del monorepo de forma segura.",
+        description: "Lee un archivo de texto del monorepo. La ruta es relativa a la raíz del monorepo. No permite salir del monorepo ni leer .env, .git o node_modules.",
         inputSchema: {
           type: "object",
           properties: {
             filePath: {
               type: "string",
-              description: "Ruta relativa del archivo a leer.",
+              description: "Ruta relativa a la raíz del monorepo, ej: projects/01-agent-unit-tester/src/math.ts",
             },
           },
           required: ["filePath"],
@@ -121,9 +117,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === "readProjectFile") {
-    const args = request.params.arguments as { filePath: string };
+    const filePath = request.params.arguments?.filePath;
     try {
-      const content = await fs.readFile(args.filePath, "utf-8");
+      if (typeof filePath !== "string" || filePath.length === 0) {
+        throw new Error('El argumento "filePath" es obligatorio y debe ser un string.');
+      }
+      const content = await readProjectFile(MONOREPO_ROOT, filePath);
       return {
         content: [
           {

@@ -1,0 +1,217 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
+/**
+ * Motor de grafos de estado mínimo, inspirado en LangGraph:
+ *  - un estado compartido que viaja por el grafo,
+ *  - nodos que devuelven solo la parte del estado que cambian,
+ *  - reducers que definen cómo se combina cada actualización,
+ *  - aristas fijas y condicionales (routing según el estado),
+ *  - límite de pasos y checkpoints para retomar una corrida.
+ */
+
+export const START = "__start__";
+export const END = "__end__";
+
+/** Cómo combinar el valor actual de un campo con una actualización. Default: reemplazar. */
+export type Reducer<T> = (current: T, update: T) => T;
+export type Reducers<S> = { [K in keyof S]?: Reducer<S[K]> };
+
+export type NodeFn<S> = (state: Readonly<S>) => Promise<Partial<S>> | Partial<S>;
+export type Router<S> = (state: Readonly<S>) => string;
+
+/** Reducer para listas: agrega en vez de reemplazar (como `messages` en LangGraph). */
+export const appendReducer = <T>(current: T[] = [], update: T[] = []): T[] => [...current, ...update];
+
+export interface Checkpoint<S> {
+  threadId: string;
+  step: number;
+  /** Próximo nodo a ejecutar (END si la corrida terminó). */
+  next: string;
+  state: S;
+  /** Historial de nodos ejecutados, en orden. */
+  history: string[];
+  updatedAt: string;
+}
+
+export interface Checkpointer<S> {
+  save(checkpoint: Checkpoint<S>): Promise<void>;
+  load(threadId: string): Promise<Checkpoint<S> | null>;
+}
+
+/** Checkpoints en memoria (útil para tests). */
+export class MemoryCheckpointer<S> implements Checkpointer<S> {
+  private store = new Map<string, Checkpoint<S>>();
+  async save(checkpoint: Checkpoint<S>) {
+    this.store.set(checkpoint.threadId, structuredClone(checkpoint));
+  }
+  async load(threadId: string) {
+    const c = this.store.get(threadId);
+    return c ? structuredClone(c) : null;
+  }
+}
+
+/** Checkpoints en archivos JSON: `<dir>/<threadId>.json`. Permite inspeccionar y retomar corridas. */
+export class FileCheckpointer<S> implements Checkpointer<S> {
+  constructor(private dir: string) {}
+  private file(threadId: string) {
+    if (!/^[\w.-]+$/.test(threadId)) throw new Error(`threadId inválido: "${threadId}"`);
+    return path.join(this.dir, `${threadId}.json`);
+  }
+  async save(checkpoint: Checkpoint<S>) {
+    await fs.mkdir(this.dir, { recursive: true });
+    await fs.writeFile(this.file(checkpoint.threadId), JSON.stringify(checkpoint, null, 2));
+  }
+  async load(threadId: string) {
+    try {
+      return JSON.parse(await fs.readFile(this.file(threadId), "utf-8")) as Checkpoint<S>;
+    } catch (error: any) {
+      if (error?.code === "ENOENT") return null;
+      throw error;
+    }
+  }
+}
+
+export class GraphRecursionError extends Error {
+  constructor(maxSteps: number, public lastNode: string) {
+    super(`El grafo superó el máximo de ${maxSteps} pasos (último nodo: ${lastNode}).`);
+  }
+}
+
+export interface StepEvent<S> {
+  step: number;
+  node: string;
+  update: Partial<S>;
+  state: S;
+  next: string;
+}
+
+export interface RunOptions<S> {
+  /** Identificador de la corrida para los checkpoints. */
+  threadId?: string;
+  onStep?: (event: StepEvent<S>) => void;
+}
+
+type Edge<S> = { kind: "fixed"; to: string } | { kind: "conditional"; router: Router<S>; targets?: string[] };
+
+export class StateGraph<S extends object> {
+  private nodes = new Map<string, NodeFn<S>>();
+  private edges = new Map<string, Edge<S>>();
+
+  constructor(private reducers: Reducers<S> = {}) {}
+
+  addNode(name: string, fn: NodeFn<S>): this {
+    if (name === START || name === END) throw new Error(`"${name}" es un nombre reservado.`);
+    if (this.nodes.has(name)) throw new Error(`El nodo "${name}" ya existe.`);
+    this.nodes.set(name, fn);
+    return this;
+  }
+
+  addEdge(from: string, to: string): this {
+    this.setEdge(from, { kind: "fixed", to });
+    return this;
+  }
+
+  /** `targets` (opcional) declara los destinos posibles para validarlos al compilar. */
+  addConditionalEdges(from: string, router: Router<S>, targets?: string[]): this {
+    this.setEdge(from, { kind: "conditional", router, targets });
+    return this;
+  }
+
+  compile(options: { maxSteps?: number; checkpointer?: Checkpointer<S> } = {}): CompiledGraph<S> {
+    if (!this.edges.has(START)) throw new Error("Falta la arista de entrada: addEdge(START, ...).");
+    const known = (n: string) => n === END || this.nodes.has(n);
+    for (const [from, edge] of this.edges) {
+      if (from !== START && !this.nodes.has(from)) throw new Error(`Arista desde un nodo inexistente: "${from}".`);
+      const targets = edge.kind === "fixed" ? [edge.to] : (edge.targets ?? []);
+      for (const t of targets) if (!known(t)) throw new Error(`Arista hacia un nodo inexistente: "${from}" → "${t}".`);
+    }
+    for (const name of this.nodes.keys()) {
+      if (!this.edges.has(name)) throw new Error(`El nodo "${name}" no tiene arista de salida.`);
+    }
+    return new CompiledGraph(this.nodes, this.edges, this.reducers, options.maxSteps ?? 25, options.checkpointer);
+  }
+
+  private setEdge(from: string, edge: Edge<S>) {
+    if (from === END) throw new Error("END no puede tener aristas de salida.");
+    if (this.edges.has(from)) throw new Error(`"${from}" ya tiene una arista de salida.`);
+    this.edges.set(from, edge);
+  }
+}
+
+export class CompiledGraph<S extends object> {
+  constructor(
+    private nodes: Map<string, NodeFn<S>>,
+    private edges: Map<string, Edge<S>>,
+    private reducers: Reducers<S>,
+    private maxSteps: number,
+    private checkpointer?: Checkpointer<S>,
+  ) {}
+
+  /** Corre el grafo desde START con el estado inicial y devuelve el estado final. */
+  async invoke(initial: S, options: RunOptions<S> = {}): Promise<S> {
+    let last = initial;
+    for await (const event of this.stream(initial, options)) last = event.state;
+    return last;
+  }
+
+  /** Igual que invoke, pero emite un evento por cada nodo ejecutado. */
+  async *stream(initial: S, options: RunOptions<S> = {}): AsyncGenerator<StepEvent<S>> {
+    const first = this.nextNode(START, initial);
+    yield* this.run({ state: structuredClone(initial), next: first, step: 0, history: [] }, options);
+  }
+
+  /** Retoma una corrida desde su último checkpoint (por ejemplo, si se cortó a la mitad). */
+  async resume(threadId: string, options: Omit<RunOptions<S>, "threadId"> = {}): Promise<S> {
+    if (!this.checkpointer) throw new Error("Para retomar hace falta un checkpointer.");
+    const checkpoint = await this.checkpointer.load(threadId);
+    if (!checkpoint) throw new Error(`No hay checkpoint para "${threadId}".`);
+    let last = checkpoint.state;
+    for await (const event of this.run(checkpoint, { ...options, threadId })) last = event.state;
+    return last;
+  }
+
+  private async *run(
+    from: { state: S; next: string; step: number; history: string[] },
+    { threadId, onStep }: RunOptions<S>,
+  ): AsyncGenerator<StepEvent<S>> {
+    let { state, next, step } = from;
+    const history = [...from.history];
+
+    while (next !== END) {
+      if (step >= this.maxSteps) throw new GraphRecursionError(this.maxSteps, history.at(-1) ?? START);
+      const node = next;
+      const update = (await this.nodes.get(node)!(state)) ?? {};
+      state = this.applyUpdate(state, update);
+      step++;
+      history.push(node);
+      next = this.nextNode(node, state);
+
+      if (this.checkpointer && threadId) {
+        await this.checkpointer.save({ threadId, step, next, state, history, updatedAt: new Date().toISOString() });
+      }
+      const event: StepEvent<S> = { step, node, update, state, next };
+      onStep?.(event);
+      yield event;
+    }
+  }
+
+  private applyUpdate(state: S, update: Partial<S>): S {
+    const merged = { ...state };
+    for (const key of Object.keys(update) as Array<keyof S>) {
+      const value = update[key] as S[keyof S];
+      const reducer = this.reducers[key];
+      merged[key] = reducer ? reducer(state[key], value) : value;
+    }
+    return merged;
+  }
+
+  private nextNode(from: string, state: S): string {
+    const edge = this.edges.get(from)!;
+    if (edge.kind === "fixed") return edge.to;
+    const target = edge.router(state);
+    if (target !== END && !this.nodes.has(target)) throw new Error(`El router de "${from}" devolvió un nodo inexistente: "${target}".`);
+    if (edge.targets && !edge.targets.includes(target)) throw new Error(`El router de "${from}" devolvió "${target}", que no está declarado.`);
+    return target;
+  }
+}

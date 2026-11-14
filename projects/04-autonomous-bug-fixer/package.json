@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit -p ."
+    "typecheck": "tsc --noEmit -p .",
+    "reset": "git checkout -- src/buggyCode.ts"
   },
   "dependencies": {
     "@sandbox/agent-core": "*"

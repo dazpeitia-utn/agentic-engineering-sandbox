@@ -10,7 +10,9 @@ Un agente autónomo desarrollado en **TypeScript** que utiliza el bucle de ejecu
    El agente no se limita a responder en un solo turno; opera bajo un ciclo iterativo donde *razona* el objetivo, decide qué *acción* tomar, ejecuta la herramienta correspondiente y *observa* el resultado para decidir el siguiente paso.
 2. **Tool Calling (Llamada a Herramientas):** 
    Se exponen funciones locales (`read_file`, `write_file`) al modelo de lenguaje (LLM) formateadas mediante esquemas de tipo JSON, permitiendo que la IA interactúe directamente con el sistema de archivos de forma controlada.
-3. **Prompt Engineering Estructurado:** 
+3. **Loop de feedback con ejecución real:** 
+   El agente no solo escribe los tests: los ejecuta con la tool `run_tests` (Vitest), lee la salida y los corrige hasta que pasan. Solo puede escribir archivos `*.test.ts`, así que no puede "arreglar" el código fuente para que los tests pasen. Al final, el programa vuelve a correr los tests por su cuenta y sale con código 1 si fallan.
+4. **Prompt Engineering Estructurado:** 
    Separación de responsabilidades entre el `system prompt` (definición de la personalidad, rol y restricciones del agente) y la definición técnica de las herramientas disponibles.
 
 ---
@@ -22,6 +24,15 @@ Un agente autónomo desarrollado en **TypeScript** que utiliza el bucle de ejecu
 * **Ejecución en Tiempo de Real:** `tsx` para correr TypeScript directamente sin compilación previa manual.
 * **Entorno:** `.env` único en la raíz del monorepo, cargado por `agent-core`.
 * **Framework de Testing Objetivo:** Vitest / Jest.
+
+---
+
+## ▶️ Uso
+
+```bash
+npm start -w 01-agent-unit-tester                                # genera src/math.test.ts para src/math.ts
+npm start -w 01-agent-unit-tester -- src/otro.ts src/otro.test.ts
+```
 
 ---
 

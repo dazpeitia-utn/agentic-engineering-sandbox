@@ -1,15 +1,15 @@
 import { runBugFixerAgent } from "./agent/bugFixerAgent.js";
 
 async function main() {
-  const bugReport =
-    "Fallo en test unitario: la función `calculateTotal(100, 20)` esperaba recibir `120`, " +
-    "pero el resultado devuelto fue `80`. El archivo a revisar es `src/buggyCode.ts`.";
+  // Uso: npm start -w 04-autonomous-bug-fixer -- [archivoDeTests]
+  const testFile = process.argv[2] ?? "src/buggyCode.test.ts";
 
   console.log("🚀 Iniciando Proyecto 04: Autonomous Bug Fixer...\n");
-  const result = await runBugFixerAgent(bugReport);
+  const { summary, fixed } = await runBugFixerAgent(testFile);
 
-  console.log("\n✨ **Resultado del Agente Corrector:**\n");
-  console.log(result);
+  if (summary) console.log("\n✨ **Resultado del Agente Corrector:**\n\n" + summary);
+  console.log(`\n${fixed ? "✅ Validado: los tests pasan." : "❌ Los tests siguen fallando."}`);
+  process.exitCode = fixed ? 0 : 1;
 }
 
 main().catch((error) => {

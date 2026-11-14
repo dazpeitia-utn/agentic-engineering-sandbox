@@ -41,10 +41,23 @@ export interface FsToolsOptions {
   allowWrite?: boolean;
   /** Tamaño máximo de archivo a leer, en bytes (default 200 KB). */
   maxReadBytes?: number;
+  /**
+   * Filtro opcional de escritura: recibe la ruta relativa a `rootDir` y
+   * devuelve true si el agente puede escribirla (ej: solo archivos *.test.ts).
+   */
+  canWrite?: (relativePath: string) => boolean;
+  /** Mensaje que ve el modelo cuando `canWrite` rechaza una ruta. */
+  writeDeniedMessage?: string;
 }
 
 /** Tools `read_file` y `write_file` limitadas a `rootDir`. */
-export function createFsTools({ rootDir, allowWrite = true, maxReadBytes = 200_000 }: FsToolsOptions): AgentTool[] {
+export function createFsTools({
+  rootDir,
+  allowWrite = true,
+  maxReadBytes = 200_000,
+  canWrite = () => true,
+  writeDeniedMessage = "No tenés permiso para escribir ese archivo.",
+}: FsToolsOptions): AgentTool[] {
   const readFile: AgentTool = {
     name: "read_file",
     description: "Lee un archivo de texto. La ruta es relativa a la carpeta del proyecto.",
@@ -81,6 +94,8 @@ export function createFsTools({ rootDir, allowWrite = true, maxReadBytes = 200_0
       const filePath = requireString(args, "filePath");
       if (typeof args.content !== "string") throw new Error('El argumento "content" debe ser un string.');
       const fullPath = await resolveInside(rootDir, filePath);
+      const relative = path.relative(await fs.realpath(rootDir), fullPath).split(path.sep).join("/");
+      if (!canWrite(relative)) throw new Error(`${writeDeniedMessage} (${filePath})`);
       await fs.mkdir(path.dirname(fullPath), { recursive: true });
       await fs.writeFile(fullPath, args.content, "utf-8");
       return `Archivo guardado: ${filePath}`;

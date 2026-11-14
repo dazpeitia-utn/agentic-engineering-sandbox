@@ -73,6 +73,7 @@ export async function runBugFixerAgent(bugReport: string) {
 
     if (responseMessage.tool_calls) {
       for (const toolCall of responseMessage.tool_calls) {
+        if (toolCall.type !== "function") continue;
         const functionName = toolCall.function.name;
         const functionArgs = JSON.parse(toolCall.function.arguments);
 

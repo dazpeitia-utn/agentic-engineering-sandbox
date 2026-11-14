@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sumar, dividir } from './math';
+import { sumar, dividir } from './math.js';
 
 describe('sumar', () => {
   it('debería retornar 3 cuando se suman 1 y 2', () => {

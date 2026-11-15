@@ -10,7 +10,7 @@ Piezas compartidas por los agentes del monorepo. Cualquier proyecto nuevo lo usa
 | `generateStructured<T>({ schema, ... })` | Respuesta del modelo que cumple un JSON Schema estricto (structured outputs), ya parseada. |
 | `StateGraph` / `START` / `END` | Motor de grafos de estado al estilo LangGraph: nodos que devuelven actualizaciones parciales, reducers por campo (`appendReducer`), aristas fijas y condicionales, `maxSteps`, `invoke` / `stream` y checkpoints (`MemoryCheckpointer`, `FileCheckpointer`) con `resume(threadId)`. |
 | `loadMcpTools(client)` | Descubre las tools de un servidor MCP y las adapta para `runAgent`. |
-| `createOpenAI()` / `defaultModel()` | Cliente OpenAI validando la API key; modelo configurable con `OPENAI_MODEL` (default `gpt-4o`). |
+| `createOpenAI()` / `defaultModel()` | Cliente OpenAI validando la API key; modelo configurable con `OPENAI_MODEL` (default `gpt-4o`). Respeta `OPENAI_BASE_URL` y, si apunta a un proxy (proyecto 07), manda `x-agent-id` / `x-run-id`. |
 | `loadEnv()` / `requireEnv(name)` | Carga el `.env` único de la raíz del monorepo. |
 | `consoleLogger(prefix)` | Logger de eventos del loop (tool calls y resultados). |
 

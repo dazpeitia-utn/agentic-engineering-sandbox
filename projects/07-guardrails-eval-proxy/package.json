@@ -1,0 +1,15 @@
+{
+  "name": "07-guardrails-eval-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@sandbox/agent-core": "*",
+    "ajv": "^8.20.0",
+    "openai": "^7.57.0"
+  }
+}

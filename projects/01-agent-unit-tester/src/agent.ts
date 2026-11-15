@@ -3,9 +3,9 @@ import { fileURLToPath } from "node:url";
 import {
   consoleLogger,
   createFsTools,
-  createOpenAI,
+  createLLM,
+  defaultModelFor,
   createRunTestsTool,
-  defaultModel,
   runAgent,
   runVitest,
   type ChatClient,
@@ -41,10 +41,11 @@ export async function runUnitTesterAgent(
   const goal = `Lee el archivo ${sourceFile} y genera un archivo de tests unitarios completo en ${testFile}. Ejecútalo y déjalo pasando.`;
   log(`🤖 Agente iniciado con objetivo: "${goal}"\n`);
 
+  const llm = client ? { client, model: model ?? defaultModelFor("openai") } : await createLLM();
   const result = await runAgent({
     name: "unit-tester",
-    client: client ?? createOpenAI(),
-    model: model ?? defaultModel(),
+    client: llm.client,
+    model: model ?? llm.model,
     system: SYSTEM_PROMPT,
     user: goal,
     tools: [

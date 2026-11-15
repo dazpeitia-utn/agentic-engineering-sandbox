@@ -1,0 +1,14 @@
+{
+  "name": "16-multi-provider-agents",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compare": "tsx src/compare.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "08-eval-harness": "*",
+    "@sandbox/agent-core": "*"
+  }
+}

@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createOpenAI, defaultModel, FileCheckpointer } from "@sandbox/agent-core";
+import { createLLM, FileCheckpointer } from "@sandbox/agent-core";
 import { createAgents } from "./agents.js";
 import { runCustom } from "./custom/orchestrator.js";
 import { runLangGraph } from "./langgraph/orchestrator.js";
@@ -31,7 +31,9 @@ async function main() {
   console.log(`🚀 Proyecto 06: orquestador multiagente (motor: ${engine})`);
   console.log(`📁 Workspace: ${path.relative(process.cwd(), workspaceDir)}\n📝 Tarea: ${task}\n`);
 
-  const agents = createAgents({ client: createOpenAI(), model: defaultModel(), workspaceDir, verbose: false });
+  const llm = await createLLM();
+  console.log(`🔌 Proveedor: ${llm.provider} (${llm.model})`);
+  const agents = createAgents({ client: llm.client, model: llm.model, workspaceDir, verbose: false });
   const options = {
     maxAttempts,
     threadId,

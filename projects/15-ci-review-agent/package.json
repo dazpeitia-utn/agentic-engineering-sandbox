@@ -1,0 +1,14 @@
+{
+  "name": "15-ci-review-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "review": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "07-guardrails-eval-proxy": "*",
+    "@sandbox/agent-core": "*"
+  }
+}

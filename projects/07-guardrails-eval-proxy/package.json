@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     "./budget": "./src/budget.ts",
-    "./redactors": "./src/guards/redactors.ts"
+    "./redactors": "./src/guards/redactors.ts",
+    "./guards": "./src/guards/index.ts"
   },
   "scripts": {
     "start": "tsx src/index.ts",

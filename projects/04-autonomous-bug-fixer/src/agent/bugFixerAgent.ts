@@ -57,6 +57,7 @@ export async function runBugFixerAgent(
   // 2. El agente aísla, parchea y valida.
   log("🤖 [Bug Fixer Agent] Iniciando análisis del error...");
   const result = await runAgent({
+    name: "bug-fixer",
     client: client ?? createOpenAI(),
     model: model ?? defaultModel(),
     system: SYSTEM_PROMPT,

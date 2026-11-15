@@ -38,6 +38,7 @@ export async function runGitReviewerAgent({ range, cwd, quiet = false }: ReviewO
       : "Revisa los cambios locales pendientes: primero get_git_status y luego get_git_diff.";
 
     const result = await runAgent({
+      name: "code-reviewer",
       client: createOpenAI(),
       model: defaultModel(),
       system: BASE_PROMPT,

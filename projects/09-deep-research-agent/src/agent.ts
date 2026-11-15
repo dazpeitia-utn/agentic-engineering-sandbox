@@ -74,6 +74,7 @@ export async function runDeepResearch(question: string, options: DeepResearchOpt
   let subagentCalls = 0;
 
   const result = await runAgent({
+    name: "deep-research",
     client,
     model,
     system: MAIN_PROMPT,

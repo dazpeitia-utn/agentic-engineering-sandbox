@@ -17,7 +17,7 @@ Monorepo de proyectos de agentes y servidores MCP.
 | 09 | [Deep Research Agent](projects/09-deep-research-agent) | Deep agent: planificación, subagentes, archivos como memoria y compactación | ✅ |
 | 10 | [Human-in-the-Loop Durable Agent](projects/10-human-in-the-loop) | Human-in-the-loop: interrupciones, aprobaciones y ejecución durable | ✅ |
 | 11 | [Long-Term Memory Agent](projects/11-long-term-memory) | Memoria de largo plazo: episódica, semántica, actualización y olvido | ✅ |
-| 12 | Agent Observability | Observabilidad: trazas OpenTelemetry, costo y latencia por agente | 🚧 [PR #15](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/15) |
+| 12 | [Agent Observability](projects/12-agent-observability) | Observabilidad: trazas OpenTelemetry, costo y latencia por agente | ✅ |
 | 13 | Sandboxed Code Execution | Ejecución de código en contenedores aislados con límites de recursos | 🚧 [PR #16](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/16) |
 | 14 | Remote MCP Server | MCP remoto en producción: Streamable HTTP, OAuth y deploy | 🚧 [PR #17](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/17) |
 | 15 | CI Code Review Agent | Revisor de PRs como GitHub Action con comentarios por línea | 🚧 [PR #18](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/18) |

@@ -111,6 +111,7 @@ export function createAgents({ client, model, workspaceDir, verbose = true, inst
     async [NODES.tester](state) {
       const plan = state.plan!;
       await runAgent({
+        name: "tester",
         client,
         model,
         system:
@@ -135,6 +136,7 @@ export function createAgents({ client, model, workspaceDir, verbose = true, inst
       ].filter(Boolean).join("\n\n");
 
       const result = await runAgent({
+        name: "developer",
         client,
         model,
         system:

@@ -46,3 +46,4 @@ export {
   type Provider,
 } from "./providers.js";
 export { routedClient, costAwareSelect, isRetryableProviderError, type RouteTarget, type RouterOptions } from "./router.js";
+export { runInSandbox, runVitestInSandbox, execFileAsync, createSandboxTool, dockerRunArgs, dockerAvailable, SANDBOX_IMAGE, type SandboxOptions, type SandboxResult } from "./sandbox.js";

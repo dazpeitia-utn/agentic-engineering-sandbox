@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { resolveInside } from "./fsTools.js";
 import { requireString, type AgentTool } from "./tools.js";
+import { runVitestInSandbox } from "./sandbox.js";
 
 const require = createRequire(import.meta.url);
 
@@ -21,6 +22,8 @@ const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
  * Node y sin shell. Nunca lanza por tests fallidos: devuelve el resultado.
  */
 export async function runVitest(rootDir: string, testFile: string, timeoutMs = 60_000): Promise<TestRunResult> {
+  // Con AGENT_SANDBOX=docker los tests (código escrito por un LLM) corren aislados (proyecto 13).
+  if (process.env.AGENT_SANDBOX === "docker") return runVitestInSandbox(rootDir, testFile, timeoutMs);
   const fullPath = await resolveInside(rootDir, testFile);
   const vitestCli = path.join(path.dirname(require.resolve("vitest/package.json")), "vitest.mjs");
   const relative = path.relative(rootDir, fullPath);

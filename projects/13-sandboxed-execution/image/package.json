@@ -1,0 +1,8 @@
+{
+  "name": "agentic-sandbox-image",
+  "private": true,
+  "description": "Dependencias que trae la imagen del sandbox (no es parte de los workspaces del monorepo).",
+  "dependencies": {
+    "vitest": "4.1.12"
+  }
+}

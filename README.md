@@ -22,7 +22,7 @@ Monorepo de proyectos de agentes y servidores MCP.
 | 14 | Remote MCP Server | MCP remoto en producción: Streamable HTTP, OAuth y deploy | 🚧 [PR #17](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/17) |
 | 15 | CI Code Review Agent | Revisor de PRs como GitHub Action con comentarios por línea | 🚧 [PR #18](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/18) |
 | 16 | Multi-Provider Agents | Mismo agente sobre OpenAI, Claude y modelos locales, con routing y comparación | 🚧 [PR #19](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/19) |
-| 17 | Agent-to-Agent (A2A) | Protocolo A2A: agentes que se descubren y se delegan tareas por la red | 🚧 [PR #20](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/20) |
+| 17 | [Agent-to-Agent (A2A)](projects/17-agent-to-agent-a2a) | Protocolo A2A: agentes que se descubren y se delegan tareas por la red | ✅ |
 
 ✅ terminado · 🚧 planificado (la especificación está en el README de cada carpeta y en su PR en borrador)
 

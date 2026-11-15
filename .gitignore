@@ -34,3 +34,6 @@ projects/10-human-in-the-loop/runs/
 
 # Memorias del agente (proyecto 11): datos personales, nunca al repo
 projects/11-long-term-memory/data/
+
+# Informes del research-agent del proyecto 17
+projects/17-agent-to-agent-a2a/runs/

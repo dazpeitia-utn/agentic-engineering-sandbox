@@ -47,12 +47,18 @@ export interface PromptInjectionOptions {
   /** Roles que se inspeccionan. Por default user y tool (el system lo escribe el desarrollador). */
   roles?: string[];
   action?: Action;
+  /**
+   * Severidad por agente. Un agente de solo lectura que revisa código de seguridad (que cita
+   * patrones de ataque) puede registrar en vez de bloquear: el riesgo depende de lo que el agente puede hacer.
+   */
+  actionFor?: (ctx: CallContext) => Action;
 }
 
-export function promptInjectionGuard({ roles = ["user", "tool"], action = "block" }: PromptInjectionOptions = {}): InputGuard {
+export function promptInjectionGuard({ roles = ["user", "tool"], action: defaultAction = "block", actionFor }: PromptInjectionOptions = {}): InputGuard {
   return {
     name: "prompt_injection",
-    async checkInput(request) {
+    async checkInput(request, ctx) {
+      const action = actionFor?.(ctx) ?? defaultAction;
       const findings: Finding[] = [];
       request.messages.forEach((message, index) => {
         if (!roles.includes(message.role)) return;

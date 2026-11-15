@@ -7,7 +7,8 @@
 FROM node:22-slim
 WORKDIR /
 COPY package.json /package.json
-RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force \
+# npm 11: el npm 10.9 que trae la imagen base tiene el mismo bug que rompe la instalación de vitest.
+RUN npx -y npm@11 install --omit=dev --no-audit --no-fund && npm cache clean --force \
  && ln -s /node_modules/.bin/vitest /usr/local/bin/vitest
 # El usuario "node" (uid 1000) ya existe en la imagen base.
 USER 1000:1000

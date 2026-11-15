@@ -56,20 +56,50 @@ describe.skipIf(!ready)("escape del sandbox (Docker real)", () => {
   });
 
   it("una fork bomb queda contenida por el límite de procesos", async () => {
-    const r = await sh("i=0; while [ $i -lt 400 ]; do sleep 30 & i=$((i+1)); done 2>&1 | tail -1; echo vivo", { pidsLimit: 64, timeoutMs: 20_000 });
-    expect(r.stdout + r.stderr).toMatch(/Resource temporarily unavailable|Cannot fork|vivo/);
-  });
+    // Node intenta crear 400 procesos con un límite de 64 y cuenta cuántos pudo crear.
+    // (Se mide con Node porque, con el límite agotado, un shell ni siquiera puede crear
+    // el subproceso de un $(...) para informar: ver el test siguiente.)
+    const bomb = `
+      const { spawn } = require("child_process");
+      const limite = require("fs").readFileSync("/sys/fs/cgroup/pids.max", "utf8").trim();
+      let ok = 0, fallos = 0, pendientes = 400;
+      const fin = () => { if (--pendientes === 0) { console.log("limite=" + limite + " creados=" + ok + " fallos=" + fallos); process.exit(0); } };
+      for (let i = 0; i < 400; i++) {
+        const c = spawn("sleep", ["30"], { stdio: "ignore" });
+        c.on("spawn", () => { ok++; fin(); });
+        c.on("error", () => { fallos++; fin(); });
+      }`;
+    const r = await runInSandbox(["node", "-e", bomb], { workspaceDir: ws, pidsLimit: 64, timeoutMs: 20_000 });
+    const [, limite, creados, fallos] = r.stdout.match(/limite=(\d+) creados=(\d+) fallos=(\d+)/)!.map(Number);
+    expect(limite).toBe(64);
+    // Los hilos del propio Node también cuentan: se crean menos de 64 procesos.
+    expect(creados).toBeLessThan(64);
+    expect(creados + fallos).toBe(400);
+    expect(r.durationMs).toBeLessThan(15_000);
+  }, 30_000);
 
-  it("un loop infinito se corta por timeout", async () => {
+  it("un shell que agota el límite de procesos aborta (el atacante muere, el host no se entera)", async () => {
+    const r = await sh("i=0; while [ $i -lt 400 ]; do sleep 30 >/dev/null 2>&1 & i=$((i+1)); done; echo nunca-llega", { pidsLimit: 64, timeoutMs: 20_000 });
+    expect(r.stderr).toMatch(/Cannot fork/);
+    expect(r.stdout).not.toContain("nunca-llega");
+    expect(r.durationMs).toBeLessThan(15_000);
+  }, 30_000);
+
+  it("un loop infinito se corta por timeout y el contenedor no queda vivo", async () => {
     const r = await runInSandbox(["node", "-e", "while(true){}"], { workspaceDir: ws, timeoutMs: 3000 });
     expect(r.timedOut).toBe(true);
     expect(r.durationMs).toBeLessThan(15_000);
-  });
+    const vivos = await execFileAsync("docker", ["ps", "-q", "--filter", "name=agent-sbx"], { timeout: 5000 });
+    expect(vivos.stdout.trim()).toBe("");
+  }, 30_000);
 
   it("vitest funciona adentro: un test generado corre aislado", async () => {
     await fs.writeFile(path.join(ws, "suma.test.ts"), 'import { it, expect } from "vitest";\nit("suma", () => expect(1 + 1).toBe(2));\n');
     const r = await runVitestInSandbox(ws, "suma.test.ts");
     expect(r.passed).toBe(true);
+    // Sin códigos de color: la salida la lee un LLM.
+    expect(r.output).not.toMatch(/\x1b\[/);
+    expect(r.output).toMatch(/1 passed/);
   }, 60_000);
 });
 

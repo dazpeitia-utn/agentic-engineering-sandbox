@@ -95,8 +95,10 @@ export async function dockerAvailable(exec: Exec = execFileAsync): Promise<boole
 /** Corre Vitest sobre un archivo de tests DENTRO del sandbox (la imagen trae vitest para Linux). */
 export async function runVitestInSandbox(workspaceDir: string, testFile: string, timeoutMs = 60_000, exec?: Exec) {
   const relative = path.relative(workspaceDir, await resolveInside(workspaceDir, testFile));
-  const r = await runInSandbox(["vitest", "run", relative, "--reporter=verbose", "--color=false"], { workspaceDir, timeoutMs, env: { CI: "1" } }, exec);
-  return { passed: r.exitCode === 0, exitCode: r.exitCode, timedOut: r.timedOut, output: `${r.stdout}\n${r.stderr}`.trim() };
+  const r = await runInSandbox(["vitest", "run", relative, "--reporter=verbose", "--color=false"], { workspaceDir, timeoutMs, env: { CI: "1", NO_COLOR: "1", FORCE_COLOR: "0" } }, exec);
+  // Sin códigos de color: esta salida la lee un LLM.
+  const output = `${r.stdout}\n${r.stderr}`.replace(/\x1b\[[0-9;]*m/g, "").trim();
+  return { passed: r.exitCode === 0, exitCode: r.exitCode, timedOut: r.timedOut, output };
 }
 
 /** Tool para agentes: ejecutar un comando de shell dentro del sandbox. */

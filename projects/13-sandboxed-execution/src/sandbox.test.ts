@@ -60,6 +60,7 @@ describe("runInSandbox (exec falso)", () => {
     expect(await runVitestInSandbox(ws, "package.json", 1000, exec)).toMatchObject({ passed: true });
     const args = (exec.mock.calls[0] as any)[1] as string[];
     expect(args.slice(-5)).toEqual(["vitest", "run", "package.json", "--reporter=verbose", "--color=false"]);
+    expect(args).toEqual(expect.arrayContaining(["-e", "NO_COLOR=1"]));
     await expect(runVitestInSandbox(ws, "../../etc/passwd", 1000, exec)).rejects.toThrow(/Acceso denegado/);
   });
 

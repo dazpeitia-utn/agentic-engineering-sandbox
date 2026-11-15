@@ -28,3 +28,6 @@ projects/08-eval-harness/reports/
 
 # Corridas del deep research agent (proyecto 09)
 projects/09-deep-research-agent/runs/
+
+# Corridas del agente human-in-the-loop (proyecto 10)
+projects/10-human-in-the-loop/runs/

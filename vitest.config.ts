@@ -10,6 +10,9 @@ export default defineConfig({
       "projects/06-multi-agent-orchestrator/workspace/**",
       // Código y tests generados por los agentes durante los evals (proyecto 08).
       "projects/08-eval-harness/.runs/**",
+      // Workspaces de demo copiados por el proyecto 10 (incluyen tests propios).
+      "projects/10-human-in-the-loop/demo/**",
+      "projects/10-human-in-the-loop/runs/**",
     ],
   },
 });

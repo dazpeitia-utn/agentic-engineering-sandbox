@@ -31,3 +31,6 @@ projects/09-deep-research-agent/runs/
 
 # Corridas del agente human-in-the-loop (proyecto 10)
 projects/10-human-in-the-loop/runs/
+
+# Memorias del agente (proyecto 11): datos personales, nunca al repo
+projects/11-long-term-memory/data/

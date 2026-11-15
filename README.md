@@ -16,7 +16,7 @@ Monorepo de proyectos de agentes y servidores MCP.
 | 08 | [Eval Harness](projects/08-eval-harness) | Evals: datasets, property-based testing, LLM-as-judge y regresiones | ✅ |
 | 09 | [Deep Research Agent](projects/09-deep-research-agent) | Deep agent: planificación, subagentes, archivos como memoria y compactación | ✅ |
 | 10 | [Human-in-the-Loop Durable Agent](projects/10-human-in-the-loop) | Human-in-the-loop: interrupciones, aprobaciones y ejecución durable | ✅ |
-| 11 | Long-Term Memory Agent | Memoria de largo plazo: episódica, semántica, actualización y olvido | 🚧 [PR #14](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/14) |
+| 11 | [Long-Term Memory Agent](projects/11-long-term-memory) | Memoria de largo plazo: episódica, semántica, actualización y olvido | ✅ |
 | 12 | Agent Observability | Observabilidad: trazas OpenTelemetry, costo y latencia por agente | 🚧 [PR #15](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/15) |
 | 13 | Sandboxed Code Execution | Ejecución de código en contenedores aislados con límites de recursos | 🚧 [PR #16](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/16) |
 | 14 | Remote MCP Server | MCP remoto en producción: Streamable HTTP, OAuth y deploy | 🚧 [PR #17](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/17) |

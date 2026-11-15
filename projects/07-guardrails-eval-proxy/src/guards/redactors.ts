@@ -39,6 +39,12 @@ export const SECRET_DETECTORS: Detector[] = [
     type: "credential_assignment",
     pattern: /\b(?:password|passwd|pwd|secret|api[_-]?key|access[_-]?token|contrase(?:ñ|n)a)\s*[:=]\s*["']?[^\s"'`,;]{8,}/gi,
   },
+  {
+    // Lenguaje natural: "mi contraseña del banco es Hunter2!!", "my password is s3cret!".
+    // El valor tiene que tener un dígito o un símbolo, para no tachar "la contraseña es importante".
+    type: "credential_phrase",
+    pattern: /\b(?:password|passwd|passcode|contrase(?:ñ|n)a|clave|pin)\b[^\n.]{0,30}?(?:\s(?:es|is|era|was)\s*:?|[:=])\s*["']?(?=[^\s"'`,;]*[\d!@#$%^&*])[^\s"'`,;]{4,}/gi,
+  },
 ];
 
 export const PII_DETECTORS: Detector[] = [

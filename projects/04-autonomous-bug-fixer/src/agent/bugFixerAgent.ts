@@ -4,9 +4,9 @@ import { fileURLToPath } from "node:url";
 import {
   consoleLogger,
   createFsTools,
-  createOpenAI,
+  createLLM,
+  defaultModelFor,
   createRunTestsTool,
-  defaultModel,
   runAgent,
   runVitest,
   type ChatClient,
@@ -56,10 +56,11 @@ export async function runBugFixerAgent(
 
   // 2. El agente aísla, parchea y valida.
   log("🤖 [Bug Fixer Agent] Iniciando análisis del error...");
+  const llm = client ? { client, model: model ?? defaultModelFor("openai") } : await createLLM();
   const result = await runAgent({
     name: "bug-fixer",
-    client: client ?? createOpenAI(),
-    model: model ?? defaultModel(),
+    client: llm.client,
+    model: model ?? llm.model,
     system: SYSTEM_PROMPT,
     user: `El archivo de tests ${testFile} está fallando. Salida de Vitest:\n\n${before.output}`,
     tools: [

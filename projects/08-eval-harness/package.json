@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./runner": "./src/core/runner.ts",
+    "./suites": "./src/suites/index.ts"
+  },
   "scripts": {
     "evals": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit -p ."

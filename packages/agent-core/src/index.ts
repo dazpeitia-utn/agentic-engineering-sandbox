@@ -35,3 +35,14 @@ export {
   type RunOptions,
 } from "./graph.js";
 export { generateStructured, type StructuredOptions } from "./structured.js";
+export {
+  createChatClient,
+  createLLM,
+  defaultModelFor,
+  anthropicClient,
+  toAnthropicRequest,
+  fromAnthropicResponse,
+  ProviderUnavailableError,
+  type Provider,
+} from "./providers.js";
+export { routedClient, costAwareSelect, isRetryableProviderError, type RouteTarget, type RouterOptions } from "./router.js";

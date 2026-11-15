@@ -4,14 +4,27 @@ Monorepo de proyectos de agentes y servidores MCP.
 
 ## Proyectos
 
-| # | Proyecto | Carpeta |
-|---|----------|---------|
-| 01 | Agent Unit Tester | [`projects/01-agent-unit-tester`](projects/01-agent-unit-tester) |
-| 02 | MCP Git Code Reviewer | [`projects/02-mcp-git-code-reviewer`](projects/02-mcp-git-code-reviewer) |
-| 03 | RAG Docs Assistant | [`projects/03-rag-docs-assistant`](projects/03-rag-docs-assistant) |
-| 04 | Autonomous Bug Fixer | [`projects/04-autonomous-bug-fixer`](projects/04-autonomous-bug-fixer) |
-| 05 | MCP Advanced Server | [`projects/05-mcp-advanced-server`](projects/05-mcp-advanced-server) |
-| 06 | Multi-Agent Orchestrator (grafo propio + LangGraph) | [`projects/06-multi-agent-orchestrator`](projects/06-multi-agent-orchestrator) |
+| # | Proyecto | Qué cubre | Estado |
+|---|----------|-----------|--------|
+| 01 | [Agent Unit Tester](projects/01-agent-unit-tester) | Loop ReAct, tool calling, tests que se ejecutan y validan | ✅ |
+| 02 | [MCP Git Code Reviewer](projects/02-mcp-git-code-reviewer) | Cliente/servidor MCP, tools dinámicas, git hook pre-push | ✅ |
+| 03 | [RAG Docs Assistant](projects/03-rag-docs-assistant) | RAG híbrido (embeddings + BM25 + RRF) con re-ranking | ✅ |
+| 04 | [Autonomous Bug Fixer](projects/04-autonomous-bug-fixer) | Stack traces reales, parche y validación con tests | ✅ |
+| 05 | [MCP Advanced Server](projects/05-mcp-advanced-server) | Primitivas MCP: resources, prompts y tools seguras | ✅ |
+| 06 | [Multi-Agent Orchestrator](projects/06-multi-agent-orchestrator) | Multiagente con grafo de estados: motor propio vs LangGraph | ✅ |
+| 07 | Guardrails & Eval Proxy | Proxy con guardrails: prompt injection, validación de salidas y control de costos | 🚧 [PR #10](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/10) |
+| 08 | Eval Harness | Evals: datasets, property-based testing, LLM-as-judge y regresiones | 🚧 [PR #11](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/11) |
+| 09 | Deep Research Agent | Deep agent: planificación, subagentes, archivos como memoria y compactación | 🚧 [PR #12](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/12) |
+| 10 | Human-in-the-Loop Durable Agent | Human-in-the-loop: interrupciones, aprobaciones y ejecución durable | 🚧 [PR #13](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/13) |
+| 11 | Long-Term Memory Agent | Memoria de largo plazo: episódica, semántica, actualización y olvido | 🚧 [PR #14](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/14) |
+| 12 | Agent Observability | Observabilidad: trazas OpenTelemetry, costo y latencia por agente | 🚧 [PR #15](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/15) |
+| 13 | Sandboxed Code Execution | Ejecución de código en contenedores aislados con límites de recursos | 🚧 [PR #16](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/16) |
+| 14 | Remote MCP Server | MCP remoto en producción: Streamable HTTP, OAuth y deploy | 🚧 [PR #17](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/17) |
+| 15 | CI Code Review Agent | Revisor de PRs como GitHub Action con comentarios por línea | 🚧 [PR #18](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/18) |
+| 16 | Multi-Provider Agents | Mismo agente sobre OpenAI, Claude y modelos locales, con routing y comparación | 🚧 [PR #19](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/19) |
+| 17 | Agent-to-Agent (A2A) | Protocolo A2A: agentes que se descubren y se delegan tareas por la red | 🚧 [PR #20](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/20) |
+
+✅ terminado · 🚧 planificado (la especificación está en el README de cada carpeta y en su PR en borrador)
 
 ## Paquetes compartidos
 

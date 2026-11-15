@@ -38,6 +38,7 @@ Cuando hay un proxy configurado, `createOpenAI()` de [`agent-core`](../../packag
 | `PROXY_MAX_USD_PER_RUN` | `0.5` | Gasto máximo por corrida. |
 | `PROXY_MAX_USD_PER_AGENT` | `5` | Gasto máximo por agente desde que arrancó el proxy. |
 | `PROXY_MAX_RPM` | `60` | Requests por minuto por agente. |
+| `PROXY_INJECTION_FLAG_AGENTS` | — | Agentes (por `x-agent-id`) para los que una sospecha de prompt injection se **registra** en vez de bloquearse. Pensado para agentes de solo lectura que revisan código de seguridad: el 17 lo necesitó para un revisor que leía el README de este proxy, que cita los patrones de ataque. |
 | `PROXY_LLM_CLASSIFIER` | `0` | `1` activa la segunda capa contra injection (clasificador LLM). |
 | `PROXY_CLASSIFIER_MODEL` | `gpt-4o-mini` | Modelo del clasificador. |
 | `PROXY_PRICING` | precios de referencia | JSON con precios USD / 1M tokens. **Verificá los precios actuales** en la página de pricing de OpenAI. |

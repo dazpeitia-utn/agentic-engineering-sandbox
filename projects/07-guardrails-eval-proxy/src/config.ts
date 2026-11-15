@@ -27,6 +27,8 @@ export interface ProxyConfig {
   maxUsdPerRun: number;
   maxUsdPerAgent: number;
   maxRequestsPerMinute: number;
+  /** Agentes para los que una sospecha de prompt injection se registra en vez de bloquearse. */
+  injectionFlagOnlyAgents: string[];
   llmClassifier: boolean;
   classifierModel: string;
   logDir: string;
@@ -51,6 +53,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ProxyConfig {
     maxUsdPerRun: num(env.PROXY_MAX_USD_PER_RUN, 0.5),
     maxUsdPerAgent: num(env.PROXY_MAX_USD_PER_AGENT, 5),
     maxRequestsPerMinute: num(env.PROXY_MAX_RPM, 60),
+    injectionFlagOnlyAgents: (env.PROXY_INJECTION_FLAG_AGENTS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
     llmClassifier: env.PROXY_LLM_CLASSIFIER === "1",
     classifierModel: env.PROXY_CLASSIFIER_MODEL ?? "gpt-4o-mini",
     logDir: env.PROXY_LOG_DIR ?? path.join(PROJECT_ROOT, "logs"),
@@ -61,7 +64,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ProxyConfig {
 export function createDeps(config: ProxyConfig): ProxyDeps {
   const apiKey = requireEnv("OPENAI_API_KEY");
   const inputGuards: InputGuard[] = [
-    promptInjectionGuard(),
+    promptInjectionGuard({ actionFor: (ctx) => (config.injectionFlagOnlyAgents.includes(ctx.agentId) ? "flag" : "block") }),
     sensitiveDataInputGuard(secretsGuardOptions()),
     sensitiveDataInputGuard(piiGuardOptions()),
   ];

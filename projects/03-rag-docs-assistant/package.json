@@ -6,7 +6,8 @@
   "exports": {
     "./search": "./src/retriever/searchDocs.ts",
     "./hybrid": "./src/retriever/hybrid.ts",
-    "./bm25": "./src/retriever/bm25.ts"
+    "./bm25": "./src/retriever/bm25.ts",
+    "./agent": "./src/agent/ragAgent.ts"
   },
   "scripts": {
     "start": "tsx src/index.ts",

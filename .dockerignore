@@ -1,0 +1,14 @@
+# Nunca a una imagen: secretos, dependencias locales y datos generados.
+.env
+**/.env
+.git
+node_modules
+**/node_modules
+**/runs
+**/logs
+**/traces
+**/data
+**/workspace
+**/.runs
+**/reports
+projects/03-rag-docs-assistant/src/vector-db.json

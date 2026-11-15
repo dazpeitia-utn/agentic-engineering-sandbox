@@ -1,0 +1,14 @@
+{
+  "name": "10-human-in-the-loop",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "hitl": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@sandbox/agent-core": "*",
+    "diff": "^8.0.2"
+  }
+}

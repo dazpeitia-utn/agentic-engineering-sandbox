@@ -23,6 +23,8 @@ export {
   MemoryCheckpointer,
   FileCheckpointer,
   GraphRecursionError,
+  NodeInterrupt,
+  type NodeContext,
   type Reducer,
   type Reducers,
   type NodeFn,

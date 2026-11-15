@@ -97,3 +97,82 @@ describe("StateGraph", () => {
     await fs.rm(dir, { recursive: true, force: true });
   });
 });
+
+describe("interrupt / resume (human-in-the-loop)", () => {
+  interface Approval {
+    items: string[];
+    decisions: string[];
+  }
+  /** Pide aprobación por cada ítem: un interrupt por ejecución del nodo, en un bucle. */
+  const approvalGraph = (checkpointer: any) =>
+    new StateGraph<Approval>({ decisions: appendReducer })
+      .addNode("review", (s, ctx) => {
+        const item = s.items[s.decisions.length];
+        const answer = ctx.interrupt<string>({ item });
+        return { decisions: [`${item}:${answer}`] };
+      })
+      .addEdge(START, "review")
+      .addConditionalEdges("review", (s) => (s.decisions.length < s.items.length ? "review" : END), ["review", END])
+      .compile({ checkpointer });
+
+  it("pausa, guarda lo que espera y retoma con la respuesta", async () => {
+    const checkpointer = new MemoryCheckpointer<Approval>();
+    const graph = approvalGraph(checkpointer);
+    const events: any[] = [];
+    for await (const e of graph.stream({ items: ["a", "b"], decisions: [] }, { threadId: "t" })) events.push(e);
+    expect(events).toEqual([expect.objectContaining({ node: "review", interrupt: { item: "a" } })]);
+    expect(await graph.getState("t")).toMatchObject({ status: "interrupted", interrupt: { node: "review", payload: { item: "a" } } });
+
+    expect((await graph.resume("t", { resumeValue: "ok" })).decisions).toEqual(["a:ok"]);
+    expect(await graph.getState("t")).toMatchObject({ status: "interrupted", interrupt: { payload: { item: "b" } } });
+
+    expect((await graph.resume("t", { resumeValue: "no" })).decisions).toEqual(["a:ok", "b:no"]);
+    expect(await graph.getState("t")).toMatchObject({ status: "done", next: END });
+    // Retomar una corrida terminada no hace nada.
+    expect((await graph.resume("t")).decisions).toEqual(["a:ok", "b:no"]);
+  });
+
+  it("es durable: otro 'proceso' (otro grafo compilado) retoma desde el archivo", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "hitl-"));
+    await approvalGraph(new FileCheckpointer<Approval>(dir)).invoke({ items: ["x"], decisions: [] }, { threadId: "durable" });
+    const another = approvalGraph(new FileCheckpointer<Approval>(dir));
+    expect((await another.resume("durable", { resumeValue: "aprobado" })).decisions).toEqual(["x:aprobado"]);
+    expect((await fs.readdir(dir)).filter((f) => f.endsWith(".tmp"))).toEqual([]);
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  it("varios interrupt() en el mismo nodo se responden en orden", async () => {
+    const graph = new StateGraph<{ out: string }>()
+      .addNode("form", (_s, ctx) => ({ out: `${ctx.interrupt<string>("nombre")} ${ctx.interrupt<string>("apellido")}` }))
+      .addEdge(START, "form")
+      .addEdge("form", END)
+      .compile({ checkpointer: new MemoryCheckpointer() });
+    await graph.invoke({ out: "" }, { threadId: "f" });
+    expect((await graph.getState("f"))?.interrupt?.payload).toBe("nombre");
+    await graph.resume("f", { resumeValue: "Ada" });
+    expect((await graph.getState("f"))?.interrupt?.payload).toBe("apellido");
+    expect((await graph.resume("f", { resumeValue: "Lovelace" })).out).toBe("Ada Lovelace");
+  });
+
+  it("sin checkpointer, interrupt() da un error claro", async () => {
+    const graph = new StateGraph<{ x: number }>().addNode("n", (_s, ctx) => ctx.interrupt("?")).addEdge(START, "n").addEdge("n", END).compile();
+    await expect(graph.invoke({ x: 1 })).rejects.toThrow(/necesita un checkpointer/);
+  });
+});
+
+it("si el proceso muere en el primer nodo, igual hay checkpoint para retomar", async () => {
+  const checkpointer = new MemoryCheckpointer<{ n: number }>();
+  let crash = true;
+  const graph = new StateGraph<{ n: number }>()
+    .addNode("primero", (s) => {
+      if (crash) throw new Error("kill -9");
+      return { n: s.n + 1 };
+    })
+    .addEdge(START, "primero")
+    .addEdge("primero", END)
+    .compile({ checkpointer });
+  await expect(graph.invoke({ n: 1 }, { threadId: "c" })).rejects.toThrow("kill -9");
+  expect(await checkpointer.load("c")).toMatchObject({ step: 0, next: "primero", status: "running" });
+  crash = false;
+  expect(await graph.resume("c")).toEqual({ n: 2 });
+});

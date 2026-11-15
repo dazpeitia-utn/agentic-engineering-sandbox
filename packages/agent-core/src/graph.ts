@@ -17,7 +17,25 @@ export const END = "__end__";
 export type Reducer<T> = (current: T, update: T) => T;
 export type Reducers<S> = { [K in keyof S]?: Reducer<S[K]> };
 
-export type NodeFn<S> = (state: Readonly<S>) => Promise<Partial<S>> | Partial<S>;
+/**
+ * Lo que recibe cada nodo además del estado. `interrupt(payload)` pausa el grafo
+ * (human-in-the-loop): se guarda un checkpoint y la corrida se detiene. Al hacer
+ * `resume(threadId, valor)`, el nodo se vuelve a ejecutar desde el principio y esta
+ * vez `interrupt()` devuelve `valor`. Por eso el código antes del interrupt debe ser
+ * barato y sin efectos (igual que en LangGraph).
+ */
+export interface NodeContext {
+  interrupt<T = unknown>(payload: unknown): T;
+}
+
+export type NodeFn<S> = (state: Readonly<S>, ctx: NodeContext) => Promise<Partial<S>> | Partial<S>;
+
+/** Señal interna: un nodo pidió pausar. */
+export class NodeInterrupt extends Error {
+  constructor(public payload: unknown) {
+    super("El nodo pidió una interrupción (human-in-the-loop).");
+  }
+}
 export type Router<S> = (state: Readonly<S>) => string;
 
 /** Reducer para listas: agrega en vez de reemplazar (como `messages` en LangGraph). */
@@ -32,6 +50,12 @@ export interface Checkpoint<S> {
   /** Historial de nodos ejecutados, en orden. */
   history: string[];
   updatedAt: string;
+  /** running: en curso o cortada; interrupted: esperando a una persona; done: terminó. */
+  status?: "running" | "interrupted" | "done";
+  /** Qué está esperando la corrida pausada. */
+  interrupt?: { node: string; payload: unknown };
+  /** Respuestas ya dadas a los interrupt() del nodo pendiente, en orden. */
+  resumeValues?: unknown[];
 }
 
 export interface Checkpointer<S> {
@@ -60,7 +84,11 @@ export class FileCheckpointer<S> implements Checkpointer<S> {
   }
   async save(checkpoint: Checkpoint<S>) {
     await fs.mkdir(this.dir, { recursive: true });
-    await fs.writeFile(this.file(checkpoint.threadId), JSON.stringify(checkpoint, null, 2));
+    // Escritura atómica: si el proceso muere a la mitad, el checkpoint anterior queda intacto.
+    const file = this.file(checkpoint.threadId);
+    const tmp = `${file}.${process.pid}.tmp`;
+    await fs.writeFile(tmp, JSON.stringify(checkpoint, null, 2));
+    await fs.rename(tmp, file);
   }
   async load(threadId: string) {
     try {
@@ -84,6 +112,8 @@ export interface StepEvent<S> {
   update: Partial<S>;
   state: S;
   next: string;
+  /** Si el nodo pidió una interrupción: lo que espera. La corrida queda pausada. */
+  interrupt?: unknown;
 }
 
 export interface RunOptions<S> {
@@ -158,38 +188,83 @@ export class CompiledGraph<S extends object> {
   /** Igual que invoke, pero emite un evento por cada nodo ejecutado. */
   async *stream(initial: S, options: RunOptions<S> = {}): AsyncGenerator<StepEvent<S>> {
     const first = this.nextNode(START, initial);
-    yield* this.run({ state: structuredClone(initial), next: first, step: 0, history: [] }, options);
+    const state = structuredClone(initial);
+    // Checkpoint inicial: si el proceso muere durante el primer nodo, la corrida igual se puede retomar.
+    if (this.checkpointer && options.threadId) {
+      await this.checkpointer.save({ threadId: options.threadId, step: 0, next: first, state, history: [], updatedAt: new Date().toISOString(), status: "running" });
+    }
+    yield* this.run({ state, next: first, step: 0, history: [] }, options);
   }
 
-  /** Retoma una corrida desde su último checkpoint (por ejemplo, si se cortó a la mitad). */
-  async resume(threadId: string, options: Omit<RunOptions<S>, "threadId"> = {}): Promise<S> {
+  /**
+   * Retoma una corrida desde su último checkpoint: si se cortó a la mitad, o si
+   * estaba pausada esperando a una persona (en ese caso `resumeValue` es su respuesta).
+   */
+  async resume(threadId: string, options: Omit<RunOptions<S>, "threadId"> & { resumeValue?: unknown } = {}): Promise<S> {
+    let last: S | undefined;
+    for await (const event of this.resumeStream(threadId, options)) last = event.state;
+    return last ?? (await this.getState(threadId))!.state;
+  }
+
+  async *resumeStream(threadId: string, { resumeValue, ...options }: Omit<RunOptions<S>, "threadId"> & { resumeValue?: unknown } = {}): AsyncGenerator<StepEvent<S>> {
     if (!this.checkpointer) throw new Error("Para retomar hace falta un checkpointer.");
     const checkpoint = await this.checkpointer.load(threadId);
     if (!checkpoint) throw new Error(`No hay checkpoint para "${threadId}".`);
-    let last = checkpoint.state;
-    for await (const event of this.run(checkpoint, { ...options, threadId })) last = event.state;
-    return last;
+    if (checkpoint.status === "done" || checkpoint.next === END) return;
+    const resumeValues = checkpoint.status === "interrupted" ? [...(checkpoint.resumeValues ?? []), resumeValue] : (checkpoint.resumeValues ?? []);
+    yield* this.run(checkpoint, { ...options, threadId }, resumeValues);
+  }
+
+  /** Último checkpoint de una corrida (para ver si está pausada y qué espera). */
+  async getState(threadId: string): Promise<Checkpoint<S> | null> {
+    if (!this.checkpointer) throw new Error("getState necesita un checkpointer.");
+    return this.checkpointer.load(threadId);
   }
 
   private async *run(
     from: { state: S; next: string; step: number; history: string[] },
     { threadId, onStep }: RunOptions<S>,
+    resumeValues: unknown[] = [],
   ): AsyncGenerator<StepEvent<S>> {
     let { state, next, step } = from;
     const history = [...from.history];
+    const save = async (extra: Partial<Checkpoint<S>>) => {
+      if (this.checkpointer && threadId) {
+        await this.checkpointer.save({ threadId, step, next, state, history, updatedAt: new Date().toISOString(), ...extra });
+      }
+    };
 
     while (next !== END) {
       if (step >= this.maxSteps) throw new GraphRecursionError(this.maxSteps, history.at(-1) ?? START);
       const node = next;
-      const update = (await this.nodes.get(node)!(state)) ?? {};
+      let calls = 0;
+      const ctx: NodeContext = {
+        interrupt: <T>(payload: unknown): T => {
+          const index = calls++;
+          if (index < resumeValues.length) return resumeValues[index] as T;
+          throw new NodeInterrupt(payload);
+        },
+      };
+
+      let update: Partial<S>;
+      try {
+        update = (await this.nodes.get(node)!(state, ctx)) ?? {};
+      } catch (error) {
+        if (!(error instanceof NodeInterrupt)) throw error;
+        if (!this.checkpointer || !threadId) throw new Error("interrupt() necesita un checkpointer y un threadId para poder retomar.");
+        await save({ status: "interrupted", interrupt: { node, payload: error.payload }, resumeValues });
+        const event: StepEvent<S> = { step, node, update: {}, state, next: node, interrupt: error.payload };
+        onStep?.(event);
+        yield event;
+        return;
+      }
+
+      resumeValues = [];
       state = this.applyUpdate(state, update);
       step++;
       history.push(node);
       next = this.nextNode(node, state);
-
-      if (this.checkpointer && threadId) {
-        await this.checkpointer.save({ threadId, step, next, state, history, updatedAt: new Date().toISOString() });
-      }
+      await save({ status: next === END ? "done" : "running" });
       const event: StepEvent<S> = { step, node, update, state, next };
       onStep?.(event);
       yield event;

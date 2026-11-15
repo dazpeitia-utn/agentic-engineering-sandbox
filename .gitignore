@@ -25,3 +25,6 @@ projects/07-guardrails-eval-proxy/logs/
 # Eval harness (proyecto 08): carpetas de cada caso y reportes de corridas
 projects/08-eval-harness/.runs/
 projects/08-eval-harness/reports/
+
+# Corridas del deep research agent (proyecto 09)
+projects/09-deep-research-agent/runs/

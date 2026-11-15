@@ -1,0 +1,21 @@
+{
+  "name": "09-deep-research-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./agent": "./src/agent.ts",
+    "./citations": "./src/citations.ts"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@langchain/openai": "^1.8.4",
+    "@sandbox/agent-core": "*",
+    "03-rag-docs-assistant": "*",
+    "deepagents": "^1.16.5",
+    "openai": "^7.57.0"
+  }
+}

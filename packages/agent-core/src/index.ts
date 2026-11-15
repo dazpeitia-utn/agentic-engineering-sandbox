@@ -1,10 +1,12 @@
 export { loadEnv, requireEnv, MONOREPO_ROOT } from "./env.js";
-export { createOpenAI, defaultModel } from "./llm.js";
+export { createOpenAI, defaultModel, agentHeaders } from "./llm.js";
 export { toOpenAITool, requireString, type AgentTool, type JsonSchema } from "./tools.js";
 export { createFsTools, resolveInside, type FsToolsOptions } from "./fsTools.js";
 export {
   runAgent,
   consoleLogger,
+  compactInPlace,
+  type CompactionOptions,
   type ChatClient,
   type AgentEvent,
   type AgentResult,

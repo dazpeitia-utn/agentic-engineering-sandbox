@@ -15,7 +15,8 @@ export interface ChatClient {
 export type AgentEvent =
   | { type: "tool_call"; name: string; args: unknown }
   | { type: "tool_result"; name: string; output: string; isError: boolean }
-  | { type: "final"; content: string };
+  | { type: "final"; content: string }
+  | { type: "compacted"; removedMessages: number; charsBefore: number; charsAfter: number };
 
 export interface RunAgentOptions {
   client: ChatClient;
@@ -28,6 +29,18 @@ export interface RunAgentOptions {
   /** Largo máximo del resultado de una tool que se le devuelve al modelo. */
   maxToolOutputChars?: number;
   onEvent?: (event: AgentEvent) => void;
+  /**
+   * Compactación de contexto para tareas largas: si la conversación supera
+   * `maxChars`, los mensajes del medio se reemplazan por un resumen. Se
+   * conservan el system prompt, el pedido original y los últimos `keepLast` mensajes.
+   */
+  compaction?: CompactionOptions;
+}
+
+export interface CompactionOptions {
+  maxChars: number;
+  keepLast?: number;
+  summarize: (messages: Message[]) => Promise<string>;
 }
 
 export interface AgentResult {
@@ -51,6 +64,7 @@ export async function runAgent({
   maxIterations = 10,
   maxToolOutputChars = 50_000,
   onEvent = () => {},
+  compaction,
 }: RunAgentOptions): Promise<AgentResult> {
   const toolsByName = new Map(tools.map((t) => [t.name, t]));
   const messages: Message[] = [
@@ -59,6 +73,7 @@ export async function runAgent({
   ];
 
   for (let iteration = 1; iteration <= maxIterations; iteration++) {
+    if (compaction) await compactInPlace(messages, compaction, onEvent);
     const response = await client.chat.completions.create({
       model,
       messages,
@@ -116,6 +131,24 @@ async function executeToolCall(
     onEvent({ type: "tool_result", name: toolName, output, isError });
     return output;
   }
+}
+
+const sizeOf = (messages: Message[]) => JSON.stringify(messages).length;
+
+/**
+ * Reemplaza los mensajes del medio por un resumen. El corte nunca cae en un
+ * mensaje `tool`: separar una tool call de su resultado rompe la API.
+ */
+export async function compactInPlace(messages: Message[], { maxChars, keepLast = 6, summarize }: CompactionOptions, onEvent: (e: AgentEvent) => void = () => {}) {
+  const charsBefore = sizeOf(messages);
+  if (charsBefore <= maxChars) return;
+  let cut = Math.max(2, messages.length - keepLast);
+  while (cut < messages.length && messages[cut].role === "tool") cut++;
+  const middle = messages.slice(2, cut);
+  if (middle.length === 0) return;
+  const summary = await summarize(middle);
+  messages.splice(2, middle.length, { role: "user", content: `[Resumen automático de ${middle.length} mensajes anteriores para ahorrar contexto]\n${summary}` });
+  onEvent({ type: "compacted", removedMessages: middle.length, charsBefore, charsAfter: sizeOf(messages) });
 }
 
 function truncate(text: string, max: number): string {

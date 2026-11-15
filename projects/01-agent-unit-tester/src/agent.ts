@@ -42,6 +42,7 @@ export async function runUnitTesterAgent(
   log(`🤖 Agente iniciado con objetivo: "${goal}"\n`);
 
   const result = await runAgent({
+    name: "unit-tester",
     client: client ?? createOpenAI(),
     model: model ?? defaultModel(),
     system: SYSTEM_PROMPT,

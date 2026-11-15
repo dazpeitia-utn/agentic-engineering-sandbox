@@ -1,0 +1,13 @@
+# Jaeger (UI de trazas) recibiendo OTLP por HTTP.
+#   docker compose -f projects/12-agent-observability/docker-compose.yml up -d
+#   UI: http://localhost:16686
+# Para mandarle las trazas, además del archivo JSONL:
+#   OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 NODE_OPTIONS="--import $PWD/projects/12-agent-observability/src/register.mjs" npm start -w <proyecto>
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686" # UI
+      - "4318:4318"   # OTLP HTTP

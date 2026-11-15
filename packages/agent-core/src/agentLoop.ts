@@ -1,5 +1,7 @@
 import type OpenAI from "openai";
 import { toOpenAITool, type AgentTool } from "./tools.js";
+import { trace } from "@opentelemetry/api";
+import { chatResponseAttributes, withSpan } from "./tracing.js";
 
 type Message = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
@@ -19,6 +21,8 @@ export type AgentEvent =
   | { type: "compacted"; removedMessages: number; charsBefore: number; charsAfter: number };
 
 export interface RunAgentOptions {
+  /** Nombre del agente para las trazas (default "agent"). */
+  name?: string;
   client: ChatClient;
   model: string;
   system: string;
@@ -55,7 +59,16 @@ export interface AgentResult {
  * Loop ReAct: llama al modelo, ejecuta las tools que pida y le devuelve los
  * resultados, hasta que responda sin tools o se llegue a `maxIterations`.
  */
-export async function runAgent({
+export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
+  const name = options.name ?? process.env.AGENT_ID ?? "agent";
+  return withSpan(`invoke_agent ${name}`, { "gen_ai.operation.name": "invoke_agent", "gen_ai.agent.name": name, "gen_ai.request.model": options.model, "agent.max_iterations": options.maxIterations ?? 10 }, async (span) => {
+    const result = await runAgentLoop(options);
+    span.setAttributes({ "agent.iterations": result.iterations, "agent.stopped_reason": result.stoppedReason });
+    return result;
+  });
+}
+
+async function runAgentLoop({
   client,
   model,
   system,
@@ -73,11 +86,18 @@ export async function runAgent({
   ];
 
   for (let iteration = 1; iteration <= maxIterations; iteration++) {
-    if (compaction) await compactInPlace(messages, compaction, onEvent);
-    const response = await client.chat.completions.create({
-      model,
-      messages,
-      ...(tools.length > 0 ? { tools: tools.map(toOpenAITool), tool_choice: "auto" as const } : {}),
+    if (compaction) await compactInPlace(messages, compaction, (e) => {
+      if (e.type === "compacted") trace.getActiveSpan()?.addEvent("context.compacted", { removed_messages: e.removedMessages, chars_before: e.charsBefore, chars_after: e.charsAfter });
+      onEvent(e);
+    });
+    const response = await withSpan(`chat ${model}`, { "gen_ai.operation.name": "chat", "gen_ai.system": "openai", "gen_ai.request.model": model, "agent.iteration": iteration, "agent.messages": messages.length }, async (span) => {
+      const r = await client.chat.completions.create({
+        model,
+        messages,
+        ...(tools.length > 0 ? { tools: tools.map(toOpenAITool), tool_choice: "auto" as const } : {}),
+      });
+      span.setAttributes(chatResponseAttributes(r));
+      return r;
     });
 
     const message = response.choices[0]?.message;
@@ -92,7 +112,13 @@ export async function runAgent({
 
     for (const toolCall of message.tool_calls) {
       const output = toolCall.type === "function"
-        ? await executeToolCall(toolsByName, toolCall.function.name, toolCall.function.arguments, onEvent)
+        ? await withSpan(`execute_tool ${toolCall.function.name}`, { "gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": toolCall.function.name, "gen_ai.tool.call.id": toolCall.id }, async (span) => {
+            const out = await executeToolCall(toolsByName, toolCall.function.name, toolCall.function.arguments, onEvent);
+            const failed = out.startsWith("Error");
+            span.setAttributes({ "tool.error": failed, "tool.output_chars": out.length });
+            if (failed) span.setStatus({ code: 2, message: out.slice(0, 200) });
+            return out;
+          })
         : "Error: solo se admiten tools de tipo function.";
       messages.push({ role: "tool", tool_call_id: toolCall.id, content: truncate(output, maxToolOutputChars) });
     }

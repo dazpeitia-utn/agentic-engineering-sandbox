@@ -1,5 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { context, trace, SpanStatusCode } from "@opentelemetry/api";
+import { tracer, withSpan } from "./tracing.js";
 
 /**
  * Motor de grafos de estado mínimo, inspirado en LangGraph:
@@ -228,6 +230,33 @@ export class CompiledGraph<S extends object> {
   ): AsyncGenerator<StepEvent<S>> {
     let { state, next, step } = from;
     const history = [...from.history];
+    // Span raíz de la corrida. Es un generador: el contexto activo no sobrevive entre yields,
+    // así que cada nodo se ejecuta explícitamente dentro del contexto de este span.
+    const runSpan = tracer.startSpan(resumeValues.length || from.step > 0 ? "graph.resume" : "graph.run", { attributes: { "graph.thread_id": threadId ?? "", "graph.start_node": next, "graph.start_step": step } });
+    const runContext = trace.setSpan(context.active(), runSpan);
+    let runError: unknown;
+    try {
+      yield* this.runSteps({ state, next, step, history }, { threadId, onStep }, resumeValues, runContext);
+    } catch (error) {
+      runError = error;
+      throw error;
+    } finally {
+      if (runError) {
+        runSpan.recordException(runError as Error);
+        runSpan.setStatus({ code: SpanStatusCode.ERROR, message: (runError as Error)?.message });
+      }
+      runSpan.end();
+    }
+  }
+
+  private async *runSteps(
+    from: { state: S; next: string; step: number; history: string[] },
+    { threadId, onStep }: RunOptions<S>,
+    resumeValues: unknown[],
+    runContext: ReturnType<typeof context.active>,
+  ): AsyncGenerator<StepEvent<S>> {
+    let { state, next, step } = from;
+    const history = from.history;
     const save = async (extra: Partial<Checkpoint<S>>) => {
       if (this.checkpointer && threadId) {
         await this.checkpointer.save({ threadId, step, next, state, history, updatedAt: new Date().toISOString(), ...extra });
@@ -248,7 +277,18 @@ export class CompiledGraph<S extends object> {
 
       let update: Partial<S>;
       try {
-        update = (await this.nodes.get(node)!(state, ctx)) ?? {};
+        update = await context.with(runContext, () => withSpan(`graph.node ${node}`, { "graph.node": node, "graph.step": step, "graph.thread_id": threadId ?? "" }, async (span) => {
+          try {
+            return (await this.nodes.get(node)!(state, ctx)) ?? {};
+          } catch (error) {
+            // Una interrupción no es un error: el span termina OK con el evento.
+            if (error instanceof NodeInterrupt) {
+              span.addEvent("graph.interrupt");
+              span.setAttribute("graph.interrupted", true);
+            }
+            throw error;
+          }
+        }));
       } catch (error) {
         if (!(error instanceof NodeInterrupt)) throw error;
         if (!this.checkpointer || !threadId) throw new Error("interrupt() necesita un checkpointer y un threadId para poder retomar.");

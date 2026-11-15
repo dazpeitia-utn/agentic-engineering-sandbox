@@ -1,0 +1,22 @@
+{
+  "name": "12-agent-observability",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./register": "./src/register.mjs"
+  },
+  "scripts": {
+    "report": "tsx src/viewer.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.10.0",
+    "@opentelemetry/context-async-hooks": "^3.1.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.301.2",
+    "@opentelemetry/resources": "^3.1.1",
+    "@opentelemetry/sdk-trace": "^3.1.1",
+    "@sandbox/agent-core": "*",
+    "07-guardrails-eval-proxy": "*"
+  }
+}

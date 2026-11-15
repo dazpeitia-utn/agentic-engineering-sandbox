@@ -117,6 +117,7 @@ export function taskTool({
       if (!spec) throw new Error(`No existe el subagente "${args.subagent}".`);
       onEvent(spec.name, description, { type: "start" });
       const result = await runAgent({
+        name: `subagent ${spec.name}`,
         client,
         model,
         system: spec.system,

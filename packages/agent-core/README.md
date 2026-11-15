@@ -10,6 +10,7 @@ Piezas compartidas por los agentes del monorepo. Cualquier proyecto nuevo lo usa
 | `generateStructured<T>({ schema, ... })` | Respuesta del modelo que cumple un JSON Schema estricto (structured outputs), ya parseada. |
 | `StateGraph` / `START` / `END` | Motor de grafos de estado al estilo LangGraph: nodos que devuelven actualizaciones parciales, reducers por campo (`appendReducer`), aristas fijas y condicionales, `maxSteps`, `invoke` / `stream` y checkpoints (`MemoryCheckpointer`, `FileCheckpointer` con escritura atómica) con `resume(threadId)`. Los nodos reciben `ctx.interrupt(payload)` para pausar y esperar a una persona (human-in-the-loop, proyecto 10). |
 | `runAgent({ compaction })` | Compactación de contexto para tareas largas: resume los mensajes del medio sin separar tool calls de sus resultados (proyecto 09). |
+| Trazas (OpenTelemetry) | `runAgent`, `generateStructured` y `StateGraph` generan spans con convenciones GenAI (`invoke_agent`, `chat`, `execute_tool`, `graph.run`, `graph.node`). Solo dependen de `@opentelemetry/api`: sin SDK registrado no hacen nada. `runAgent({ name })` nombra al agente en las trazas (proyecto 12). |
 | `loadMcpTools(client)` | Descubre las tools de un servidor MCP y las adapta para `runAgent`. |
 | `createOpenAI()` / `defaultModel()` | Cliente OpenAI validando la API key; modelo configurable con `OPENAI_MODEL` (default `gpt-4o`). Respeta `OPENAI_BASE_URL` y, si apunta a un proxy (proyecto 07), manda `x-agent-id` / `x-run-id`. |
 | `loadEnv()` / `requireEnv(name)` | Carga el `.env` único de la raíz del monorepo. |

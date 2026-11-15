@@ -12,6 +12,7 @@
     "04-autonomous-bug-fixer": "*",
     "06-multi-agent-orchestrator": "*",
     "07-guardrails-eval-proxy": "*",
+    "09-deep-research-agent": "*",
     "@sandbox/agent-core": "*",
     "fast-check": "^4.10.2"
   }

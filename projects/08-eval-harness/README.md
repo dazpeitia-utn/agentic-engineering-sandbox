@@ -14,6 +14,7 @@ npm run evals -w 08-eval-harness -- run slugify-fixtures                   # sin
 npm run evals -w 08-eval-harness -- run bug-fixer --repeats 3              # agente 04
 npm run evals -w 08-eval-harness -- run unit-tester --repeats 2            # agente 01
 npm run evals -w 08-eval-harness -- run orchestrator --variant thorough    # agente 06 con otra variante de prompts
+npm run evals -w 08-eval-harness -- run deep-research                      # agente 09: citas reales, cobertura (juez con fuentes)
 npm run evals -w 08-eval-harness -- run bug-fixer --only off-by-one --model gpt-4o-mini
 npm run evals -w 08-eval-harness -- compare reports/<suite>/<antes>.json reports/<suite>/<despues>.json
 ```
@@ -94,6 +95,10 @@ Variante `thorough`: el tester agrega "casos de borde exhaustivos" y el desarrol
 El tester "exhaustivo" **inventó requisitos** que la tarea no pedía ("lanzar error por encima de TB", esperar `"1.5009765625 KB"` cuando la tarea pide un decimal). El desarrollador gastó sus 3 intentos tratando de cumplir tests incorrectos. Pedir más casos de borde sin un oráculo también produce tests equivocados. Y el **kappa ≈ 0 del revisor** dice que su aprobación casi no aporta información: aprobó todos los `slugify` con bugs.
 
 Además, la primera corrida encontró un **bug en el propio 06**: su validación del plan rechazaba nombres en camelCase (`src/validarCuit.ts`), y por eso 2 de las 3 tareas ni arrancaban. Ya está corregido.
+
+### 5. Deep research (09): el juez sin fuentes se equivoca
+
+La suite `deep-research` verifica que el informe exista, que no tenga citas inventadas, que tenga al menos 3 fuentes y párrafos citados, y usa un juez de cobertura. En la primera corrida, el juez le puso **2/5 a un informe correcto**: dijo que un dato de 2024 era "imposible porque estamos en 2023". Juzgaba con su conocimiento de entrenamiento, no con las fuentes. Con la fecha actual y los fragmentos de las fuentes citadas en el prompt, más la instrucción de juzgar solo contra ellos, dio **5/5** y coincidió con los evaluadores determinísticos.
 
 > **Costo total de las corridas reales documentadas acá:** unos US$2 de la cuenta de OpenAI.
 

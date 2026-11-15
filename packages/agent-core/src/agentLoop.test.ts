@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { runAgent, type ChatClient } from "./agentLoop.js";
+import { compactInPlace, runAgent, type ChatClient } from "./agentLoop.js";
 import type { AgentTool } from "./tools.js";
 
 /** Cliente falso que devuelve los mensajes indicados, en orden. */
@@ -77,5 +77,54 @@ describe("runAgent", () => {
     const result = await runAgent({ ...base, client, tools: [big], maxToolOutputChars: 10 });
     const toolMsg = result.messages.find((m) => m.role === "tool")!;
     expect(toolMsg.content).toMatch(/^x{10}\n\.\.\.\[truncado: 90/);
+  });
+});
+
+describe("compactación de contexto", () => {
+  const big = "x".repeat(200);
+  const history = (): any[] => [
+    { role: "system", content: "sys" },
+    { role: "user", content: "objetivo" },
+    { role: "assistant", content: null, tool_calls: [{ id: "a", type: "function", function: { name: "t", arguments: "{}" } }] },
+    { role: "tool", tool_call_id: "a", content: big },
+    { role: "assistant", content: null, tool_calls: [{ id: "b", type: "function", function: { name: "t", arguments: "{}" } }] },
+    { role: "tool", tool_call_id: "b", content: big },
+    { role: "assistant", content: "pensando" },
+  ];
+
+  it("resume el medio y conserva system, objetivo y los últimos mensajes", async () => {
+    const messages = history();
+    const summarize = vi.fn(async (m: any[]) => `resumen de ${m.length}`);
+    const events: any[] = [];
+    await compactInPlace(messages, { maxChars: 300, keepLast: 2, summarize }, (e) => events.push(e));
+    expect(messages[0].content).toBe("sys");
+    expect(messages[1].content).toBe("objetivo");
+    expect(messages[2].content).toMatch(/Resumen automático de 4 mensajes/);
+    // Nunca empieza la parte conservada con un resultado de tool huérfano.
+    expect(messages[3].role).not.toBe("tool");
+    expect(events[0]).toMatchObject({ type: "compacted", removedMessages: 4 });
+  });
+
+  it("no hace nada si el contexto es chico", async () => {
+    const messages = history();
+    const summarize = vi.fn();
+    await compactInPlace(messages, { maxChars: 1_000_000, summarize });
+    expect(summarize).not.toHaveBeenCalled();
+    expect(messages).toHaveLength(7);
+  });
+
+  it("runAgent compacta durante el loop", async () => {
+    const replies = [toolCall("c1", "big", "{}"), toolCall("c2", "big", "{}"), toolCall("c3", "big", "{}"), { content: "fin" }];
+    const bigTool: AgentTool = { ...echoTool, name: "big", execute: async () => "y".repeat(500) };
+    const events: any[] = [];
+    const result = await runAgent({
+      ...base,
+      client: fakeClient(replies),
+      tools: [bigTool],
+      compaction: { maxChars: 800, keepLast: 2, summarize: async () => "resumen" },
+      onEvent: (e) => events.push(e),
+    });
+    expect(result.finalText).toBe("fin");
+    expect(events.some((e) => e.type === "compacted")).toBe(true);
   });
 });

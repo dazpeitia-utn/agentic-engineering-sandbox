@@ -14,7 +14,7 @@ Monorepo de proyectos de agentes y servidores MCP.
 | 06 | [Multi-Agent Orchestrator](projects/06-multi-agent-orchestrator) | Multiagente con grafo de estados: motor propio vs LangGraph | ✅ |
 | 07 | [Guardrails & Eval Proxy](projects/07-guardrails-eval-proxy) | Proxy con guardrails: prompt injection, validación de salidas y control de costos | ✅ |
 | 08 | [Eval Harness](projects/08-eval-harness) | Evals: datasets, property-based testing, LLM-as-judge y regresiones | ✅ |
-| 09 | Deep Research Agent | Deep agent: planificación, subagentes, archivos como memoria y compactación | 🚧 [PR #12](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/12) |
+| 09 | [Deep Research Agent](projects/09-deep-research-agent) | Deep agent: planificación, subagentes, archivos como memoria y compactación | ✅ |
 | 10 | Human-in-the-Loop Durable Agent | Human-in-the-loop: interrupciones, aprobaciones y ejecución durable | 🚧 [PR #13](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/13) |
 | 11 | Long-Term Memory Agent | Memoria de largo plazo: episódica, semántica, actualización y olvido | 🚧 [PR #14](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/14) |
 | 12 | Agent Observability | Observabilidad: trazas OpenTelemetry, costo y latencia por agente | 🚧 [PR #15](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/15) |

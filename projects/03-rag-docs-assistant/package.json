@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./search": "./src/retriever/searchDocs.ts"
+  },
   "scripts": {
     "start": "tsx src/index.ts",
     "index": "tsx src/indexer/indexDocs.ts",

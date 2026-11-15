@@ -6,6 +6,8 @@ import { runBugFixerAgent } from "04-autonomous-bug-fixer/agent";
 import { createAgents } from "06-multi-agent-orchestrator/agents";
 import { runCustom } from "06-multi-agent-orchestrator/custom";
 import { initialState, type NodeName } from "06-multi-agent-orchestrator/state";
+import { runDeepResearch } from "09-deep-research-agent/agent";
+import { searchRelevantDocs } from "03-rag-docs-assistant/search";
 import { PROJECT_ROOT } from "../core/runner.js";
 import type { EvalCase, Suite } from "../core/types.js";
 import { bugFixerCases, type BugFixerInput } from "../datasets/bugFixer.js";
@@ -221,6 +223,89 @@ export const orchestratorSuite: Suite<OrchestratorInput, OrchestratorOutput> = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// deep-research (09)
+// ---------------------------------------------------------------------------
+
+interface DeepResearchInput {
+  question: string;
+  /** Temas que un buen informe tiene que cubrir (los evalúa el juez). */
+  mustCover: string[];
+  minCitedSources: number;
+}
+
+interface DeepResearchOutput {
+  report: string | null;
+  cited: string[];
+  invalid: string[];
+  uncitedParagraphs: number;
+  sources: number;
+  /** Fragmentos de las fuentes citadas: el juez evalúa contra esto, no contra lo que "recuerda". */
+  citedExcerpts: Array<{ id: string; title: string; excerpt: string }>;
+}
+
+const docsSearch = async (query: string) =>
+  (await searchRelevantDocs(query, { topK: 3, rerank: false })).map((d) => ({ source: d.source, section: d.section, content: d.content }));
+
+export const deepResearchSuite: Suite<DeepResearchInput, DeepResearchOutput> = {
+  name: "deep-research",
+  description: "¿El deep agent (09) entrega un informe con fuentes reales, sin citas inventadas y cubriendo la pregunta?",
+  usesLlm: true,
+  variants: [{ name: "default" }],
+  cases: [
+    {
+      id: "mcp-vs-a2a",
+      description: "Pregunta mixta: Wikipedia + documentación del monorepo.",
+      input: {
+        question: "¿Qué es el Model Context Protocol (MCP), quién lo creó y cómo se usa en este monorepo? Compararlo con el protocolo A2A.",
+        mustCover: ["qué es MCP", "quién lo creó (Anthropic)", "uso en los proyectos del monorepo", "qué es A2A", "diferencias MCP vs A2A"],
+        minCitedSources: 3,
+      },
+    },
+  ],
+  async run(c, ctx) {
+    const result = await runDeepResearch(c.input.question, { workspaceDir: ctx.workspaceDir, client: ctx.client, model: ctx.model, docsSearch });
+    return {
+      report: result.report,
+      cited: result.citations?.cited ?? [],
+      invalid: result.citations?.invalid ?? [],
+      uncitedParagraphs: result.citations?.uncitedParagraphs ?? 0,
+      sources: result.sources.length,
+      citedExcerpts: result.sources.filter((s) => result.citations?.cited.includes(s.id)).map((s) => ({ id: s.id, title: s.title, excerpt: s.excerpt })),
+    };
+  },
+  evaluators: [
+    { name: "report_written", evaluate: async (_c, o) => ({ evaluator: "report_written", score: o.report ? 1 : 0, pass: Boolean(o.report), reason: o.report ? `${o.report.length} caracteres` : "No escribió report.md" }) },
+    {
+      name: "no_invented_citations",
+      evaluate: async (_c, o) => ({ evaluator: "no_invented_citations", score: o.invalid.length === 0 ? 1 : 0, pass: o.invalid.length === 0, reason: o.invalid.length ? `Citas a fuentes nunca consultadas: ${o.invalid.join(", ")}` : `${o.cited.length} citas, todas a fuentes consultadas` }),
+    },
+    {
+      name: "cited_sources",
+      evaluate: async (c, o) => ({ evaluator: "cited_sources", score: Math.min(1, o.cited.length / c.input.minCitedSources), pass: o.cited.length >= c.input.minCitedSources, reason: `${o.cited.length} fuentes citadas de ${o.sources} consultadas (mínimo ${c.input.minCitedSources})` }),
+    },
+    {
+      name: "paragraphs_cited",
+      evaluate: async (_c, o) => ({ evaluator: "paragraphs_cited", score: o.uncitedParagraphs === 0 ? 1 : o.uncitedParagraphs <= 2 ? 0.5 : 0, pass: o.uncitedParagraphs <= 2, reason: `${o.uncitedParagraphs} párrafo(s) sin cita` }),
+    },
+    llmJudge<DeepResearchInput, DeepResearchOutput>({
+      name: "coverage_judge",
+      rubric:
+        "5: cubre todos los temas pedidos con precisión y cada afirmación tiene una cita que la respalda.\n" +
+        "4: cubre casi todo; algún detalle menor sin respaldo.\n3: falta un tema o hay citas que no respaldan lo afirmado.\n" +
+        "2: faltan varios temas o hay errores factuales.\n1: no responde la pregunta.",
+      // Lección de la primera corrida: sin fecha ni fuentes, el juez marcó como "imposible" un dato correcto de 2024
+      // porque su conocimiento termina antes. Ahora juzga SOLO contra los fragmentos de las fuentes citadas.
+      prompt: (c, o) =>
+        `Fecha de hoy: ${new Date().toISOString().slice(0, 10)}. Tu conocimiento puede estar desactualizado: NO uses lo que recuerdas para ` +
+        `juzgar si un dato es verdadero. Juzga la precisión SOLO contra los fragmentos de las fuentes citadas que aparecen abajo.\n\n` +
+        `Temas que debe cubrir: ${c.input.mustCover.join("; ")}\n\nFuentes citadas:\n` +
+        o.citedExcerpts.map((s) => `[${s.id}] ${s.title}\n${s.excerpt}`).join("\n\n") +
+        `\n\nInforme:\n${o.report ?? "(sin informe)"}`,
+    }),
+  ],
+};
+
 export const SUITES: Record<string, Suite> = Object.fromEntries(
-  [slugifyFixturesSuite, bugFixerSuite, unitTesterSuite, orchestratorSuite].map((s) => [s.name, s as Suite]),
+  [slugifyFixturesSuite, bugFixerSuite, unitTesterSuite, orchestratorSuite, deepResearchSuite].map((s) => [s.name, s as Suite]),
 );

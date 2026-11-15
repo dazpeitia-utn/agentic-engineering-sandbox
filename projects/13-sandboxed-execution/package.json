@@ -1,0 +1,14 @@
+{
+  "name": "13-sandboxed-execution",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build-image": "docker build -t agentic-sandbox:latest image",
+    "escape-tests": "vitest run src/escape.test.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@sandbox/agent-core": "*"
+  }
+}

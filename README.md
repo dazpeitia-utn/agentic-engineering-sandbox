@@ -18,13 +18,13 @@ Monorepo de proyectos de agentes y servidores MCP.
 | 10 | [Human-in-the-Loop Durable Agent](projects/10-human-in-the-loop) | Human-in-the-loop: interrupciones, aprobaciones y ejecución durable | ✅ |
 | 11 | [Long-Term Memory Agent](projects/11-long-term-memory) | Memoria de largo plazo: episódica, semántica, actualización y olvido | ✅ |
 | 12 | [Agent Observability](projects/12-agent-observability) | Observabilidad: trazas OpenTelemetry, costo y latencia por agente | ✅ |
-| 13 | Sandboxed Code Execution | Ejecución de código en contenedores aislados con límites de recursos | 🚧 [PR #16](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/16) |
+| 13 | [Sandboxed Code Execution](projects/13-sandboxed-execution) | Ejecución de código en contenedores aislados con límites de recursos | ✅ |
 | 14 | [Remote MCP Server](projects/14-remote-mcp-server) | MCP remoto en producción: Streamable HTTP, OAuth y deploy | ✅ |
 | 15 | [CI Code Review Agent](projects/15-ci-review-agent) | Revisor de PRs como GitHub Action con comentarios por línea | ✅ |
 | 16 | [Multi-Provider Agents](projects/16-multi-provider-agents) | Mismo agente sobre OpenAI, Claude y modelos locales, con routing y comparación | ✅ |
 | 17 | [Agent-to-Agent (A2A)](projects/17-agent-to-agent-a2a) | Protocolo A2A: agentes que se descubren y se delegan tareas por la red | ✅ |
 
-✅ terminado · 🚧 planificado (la especificación está en el README de cada carpeta y en su PR en borrador)
+Los 17 proyectos están terminados. Cada README documenta la arquitectura, cómo usarlo, sus corridas reales y lo que no se pudo probar.
 
 ## Paquetes compartidos
 

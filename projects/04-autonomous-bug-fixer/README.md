@@ -9,7 +9,7 @@ Agente autónomo de ingeniería de software desarrollado en TypeScript y impulsa
 El sistema implementa un loop de razonamiento agéntico cerrado (*Agentic Loop*):
 
 1. **Definición del Bug (`src/buggyCode.ts` + `src/buggyCode.test.ts`):** Código con un error lógico intencional y un test real que lo detecta. El test falla a propósito, por eso está excluido del `npm test` de la raíz.
-2. **Herramientas ([`agent-core`](../../packages/agent-core)):** `read_file` / `write_file` limitadas a la carpeta del proyecto (sin permiso para modificar tests) y `run_tests` para ejecutar Vitest.
+2. **Herramientas ([`agent-core`](../../packages/agent-core)):** `read_file` / `write_file` limitadas a la carpeta del proyecto y `run_tests` para ejecutar Vitest. Solo puede modificar archivos de código **que ya existen**: no puede tocar los tests ni crear archivos nuevos. Esa restricción la motivó el [eval harness (08)](../08-eval-harness), que detectó que a veces el agente "arreglaba" el bug creando un `src/x.js` nuevo que el test importaba en lugar del `src/x.ts` con el bug.
 3. **Motor del Agente (`src/agent/bugFixerAgent.ts`):** 
    - Configura un prompt de sistema especializado en depuración en TypeScript.
    - Corre el loop ReAct compartido (`runAgent` de agent-core): procesa la respuesta del LLM, ejecuta las `tool_calls` y devuelve los resultados al modelo hasta que termina, con un máximo de 8 iteraciones.

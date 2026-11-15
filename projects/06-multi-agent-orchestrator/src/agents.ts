@@ -9,7 +9,7 @@ import {
   runVitest,
   type ChatClient,
 } from "@sandbox/agent-core";
-import { NODES, type Agents, type OrchestratorState, type Plan, type Review } from "./state.js";
+import { NODES, type Agents, type NodeName, type OrchestratorState, type Plan, type Review } from "./state.js";
 
 export interface AgentDeps {
   client: ChatClient;
@@ -17,9 +17,15 @@ export interface AgentDeps {
   /** Carpeta aislada de la corrida: los agentes solo pueden tocar archivos acá. */
   workspaceDir: string;
   verbose?: boolean;
+  /**
+   * Instrucciones extra por agente, que se agregan al final de su system prompt.
+   * Sirven para comparar variantes de prompts con el eval harness (proyecto 08).
+   */
+  instructions?: Partial<Record<NodeName, string>>;
 }
 
-const MODULE_PATH = /^src\/[a-z][a-z0-9-]*\.ts$/;
+// Un único archivo dentro de src/, sin subcarpetas ni `..`. Acepta camelCase (src/validarCuit.ts): el eval 08 detectó que antes lo rechazaba.
+const MODULE_PATH = /^src\/[A-Za-z][A-Za-z0-9_-]*\.ts$/;
 
 const planSchema = {
   type: "object",
@@ -77,7 +83,8 @@ const describePlan = (plan: Plan) =>
 const ESM_NOTE = "El proyecto usa TypeScript ESM (NodeNext): los imports relativos terminan en .js, ej: import { f } from './modulo.js'.";
 
 /** Crea los cinco nodos del orquestador. Son funciones comunes: sirven para cualquier motor de grafos. */
-export function createAgents({ client, model, workspaceDir, verbose = true }: AgentDeps): Agents {
+export function createAgents({ client, model, workspaceDir, verbose = true, instructions = {} }: AgentDeps): Agents {
+  const extra = (node: NodeName) => (instructions[node] ? `\n\n${instructions[node]}` : "");
   const onEvent = (prefix: string) => (verbose ? consoleLogger(prefix) : undefined);
   const readWorkspace = (file: string) => fs.readFile(path.join(workspaceDir, file), "utf-8").catch(() => "(no existe)");
 
@@ -93,7 +100,7 @@ export function createAgents({ client, model, workspaceDir, verbose = true }: Ag
           system:
             "Eres un Arquitecto de Software. Diseña un único módulo TypeScript para la tarea: su API pública, " +
             "los casos de prueba (incluyendo bordes y errores) y los criterios de aceptación. " +
-            "Usa rutas src/<nombre>.ts y src/<nombre>.test.ts. Sin dependencias externas.",
+            "Usa rutas src/<nombre>.ts y src/<nombre>.test.ts. Sin dependencias externas." + extra(NODES.architect),
           user: `Tarea: ${state.task}`,
         }),
       );
@@ -108,7 +115,7 @@ export function createAgents({ client, model, workspaceDir, verbose = true }: Ag
         model,
         system:
           "Eres un Ingeniero de QA. Escribe tests con Vitest a partir de la especificación, antes de que exista la implementación. " +
-          `Cubre todos los casos de prueba del plan. ${ESM_NOTE} Escribe el archivo con write_file y termina.`,
+          `Cubre todos los casos de prueba del plan. ${ESM_NOTE} Escribe el archivo con write_file y termina.` + extra(NODES.tester),
         user: `Especificación:\n${describePlan(plan)}\n\nEscribe ${plan.testFile}.`,
         tools: createFsTools({ rootDir: workspaceDir, canWrite: (p) => p === plan.testFile, writeDeniedMessage: `Solo puedes escribir ${plan.testFile}.` }),
         maxIterations: 4,
@@ -133,7 +140,7 @@ export function createAgents({ client, model, workspaceDir, verbose = true }: Ag
         system:
           "Eres un Desarrollador TypeScript. Implementa el módulo según el plan para que pasen los tests existentes. " +
           `Lee el archivo de tests con read_file, escribe la implementación completa con write_file y verifica con run_tests. ${ESM_NOTE} ` +
-          "No puedes modificar los tests.",
+          "No puedes modificar los tests." + extra(NODES.developer),
         user: `Plan:\n${describePlan(plan)}${feedback ? `\n\n${feedback}` : ""}`,
         tools: [
           ...createFsTools({ rootDir: workspaceDir, canWrite: (p) => p === plan.sourceFile, writeDeniedMessage: `Solo puedes escribir ${plan.sourceFile}.` }),
@@ -164,7 +171,7 @@ export function createAgents({ client, model, workspaceDir, verbose = true }: Ag
         system:
           "Eres un Revisor de Código Senior. Evalúa si la implementación cumple el plan y los criterios de aceptación, " +
           "si los tests son adecuados y si hay bugs o problemas de calidad. Aprueba solo si los tests pasan y no hay problemas importantes. " +
-          "Las sugerencias menores no impiden aprobar.",
+          "Las sugerencias menores no impiden aprobar." + extra(NODES.reviewer),
         user: [
           `Plan:\n${describePlan(plan)}`,
           `Código (${plan.sourceFile}):\n${await readWorkspace(plan.sourceFile)}`,

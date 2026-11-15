@@ -104,10 +104,16 @@ describe("routing", () => {
 
 describe("validatePlan", () => {
   it("acepta un plan correcto", () => expect(validatePlan(plan)).toBe(plan));
+  it("acepta nombres en camelCase", () => {
+    const camel = { ...plan, sourceFile: "src/validarCuit.ts", testFile: "src/validarCuit.test.ts" };
+    expect(validatePlan(camel)).toBe(camel);
+  });
   it.each([
     { sourceFile: "../escape.ts", testFile: "../escape.test.ts" },
     { sourceFile: "/etc/x.ts", testFile: "/etc/x.test.ts" },
     { sourceFile: "src/a.ts", testFile: "src/otro.test.ts" },
+    { sourceFile: "src/sub/a.ts", testFile: "src/sub/a.test.ts" },
+    { sourceFile: "src/a.test.ts", testFile: "src/a.test.test.ts" },
   ])("rechaza rutas peligrosas o inconsistentes: %j", (paths) => {
     expect(() => validatePlan({ ...plan, ...paths })).toThrow(/inválido/);
   });

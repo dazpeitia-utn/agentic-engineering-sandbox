@@ -1,0 +1,18 @@
+{
+  "name": "08-eval-harness",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "evals": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "01-agent-unit-tester": "*",
+    "04-autonomous-bug-fixer": "*",
+    "06-multi-agent-orchestrator": "*",
+    "07-guardrails-eval-proxy": "*",
+    "@sandbox/agent-core": "*",
+    "fast-check": "^4.10.2"
+  }
+}

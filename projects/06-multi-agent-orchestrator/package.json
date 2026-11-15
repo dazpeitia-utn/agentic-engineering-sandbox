@@ -3,6 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./agents": "./src/agents.ts",
+    "./custom": "./src/custom/orchestrator.ts",
+    "./langgraph": "./src/langgraph/orchestrator.ts",
+    "./state": "./src/state.ts"
+  },
   "scripts": {
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit -p ."

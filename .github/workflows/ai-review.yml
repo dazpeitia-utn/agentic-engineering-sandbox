@@ -1,0 +1,48 @@
+# Code review con IA en cada PR (proyecto 15).
+#
+# Requiere el secreto OPENAI_API_KEY en el repo (Settings → Secrets and variables → Actions,
+# o: gh secret set OPENAI_API_KEY). Sin el secreto, el job termina bien y no revisa nada.
+#
+# Seguridad:
+#  - Se usa `pull_request` y NO `pull_request_target`: el código del PR corre sin acceso a
+#    secretos de escritura, y los PRs desde forks no reciben OPENAI_API_KEY (se omiten).
+#  - Permisos mínimos: leer el código y escribir reviews en el PR.
+#  - Labels: `skip-ai-review` omite la revisión; `ai-review-override` acepta hallazgos críticos.
+name: AI code review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-ai-review') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # npm 11: npm 10.9 tiene un bug que rompe la instalación de vitest (ver README raíz).
+      - name: Instalar dependencias
+        run: npx -y npm@11 ci --no-audit --no-fund
+
+      - name: Revisión con IA
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx tsx projects/15-ci-review-agent/src/cli.ts

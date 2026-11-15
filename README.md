@@ -20,7 +20,7 @@ Monorepo de proyectos de agentes y servidores MCP.
 | 12 | [Agent Observability](projects/12-agent-observability) | Observabilidad: trazas OpenTelemetry, costo y latencia por agente | ✅ |
 | 13 | [Sandboxed Code Execution](projects/13-sandboxed-execution) | Ejecución de código en contenedores aislados con límites de recursos | ✅ |
 | 14 | [Remote MCP Server](projects/14-remote-mcp-server) | MCP remoto en producción: Streamable HTTP, OAuth y deploy | ✅ |
-| 15 | CI Code Review Agent | Revisor de PRs como GitHub Action con comentarios por línea | 🚧 [PR #18](https://github.com/dazpeitia-utn/agentic-engineering-sandbox/pull/18) |
+| 15 | [CI Code Review Agent](projects/15-ci-review-agent) | Revisor de PRs como GitHub Action con comentarios por línea | ✅ |
 | 16 | [Multi-Provider Agents](projects/16-multi-provider-agents) | Mismo agente sobre OpenAI, Claude y modelos locales, con routing y comparación | ✅ |
 | 17 | [Agent-to-Agent (A2A)](projects/17-agent-to-agent-a2a) | Protocolo A2A: agentes que se descubren y se delegan tareas por la red | ✅ |
 

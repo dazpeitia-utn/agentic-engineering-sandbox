@@ -1,0 +1,23 @@
+{
+  "name": "14-remote-mcp-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "agent": "tsx src/agentClient.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "03-rag-docs-assistant": "*",
+    "05-mcp-advanced-server": "*",
+    "07-guardrails-eval-proxy": "*",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@sandbox/agent-core": "*",
+    "express": "^5.3.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6"
+  }
+}

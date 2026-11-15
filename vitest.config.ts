@@ -8,6 +8,8 @@ export default defineConfig({
       "projects/04-autonomous-bug-fixer/src/buggyCode.test.ts",
       // Código y tests generados por los agentes del proyecto 06 en cada corrida.
       "projects/06-multi-agent-orchestrator/workspace/**",
+      // Código y tests generados por los agentes durante los evals (proyecto 08).
+      "projects/08-eval-harness/.runs/**",
     ],
   },
 });

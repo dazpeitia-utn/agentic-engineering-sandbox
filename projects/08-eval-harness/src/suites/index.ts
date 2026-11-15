@@ -8,6 +8,9 @@ import { runCustom } from "06-multi-agent-orchestrator/custom";
 import { initialState, type NodeName } from "06-multi-agent-orchestrator/state";
 import { runDeepResearch } from "09-deep-research-agent/agent";
 import { searchRelevantDocs } from "03-rag-docs-assistant/search";
+import { respond, writeMemories, type Turn } from "11-long-term-memory/session";
+import { MemoryStore } from "11-long-term-memory/store";
+import { createOpenAI } from "@sandbox/agent-core";
 import { PROJECT_ROOT } from "../core/runner.js";
 import type { EvalCase, Suite } from "../core/types.js";
 import { bugFixerCases, type BugFixerInput } from "../datasets/bugFixer.js";
@@ -306,6 +309,106 @@ export const deepResearchSuite: Suite<DeepResearchInput, DeepResearchOutput> = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// memory (11): sesiones separadas que solo comparten el store
+// ---------------------------------------------------------------------------
+
+interface MemoryInput {
+  /** Cada sesión es una lista de mensajes del usuario. La última sesión tiene la pregunta a evaluar. */
+  sessions: string[][];
+  /** La respuesta final tiene que mencionar esto... */
+  answerMustInclude: string[];
+  /** ...y no esto. */
+  answerMustNotInclude: string[];
+  /** Ninguna memoria puede contener esto (privacidad). */
+  neverStored: string[];
+  /** Cuántas memorias puede haber como máximo por tema (duplicados). */
+  maxPerSubject: number;
+}
+
+interface MemoryOutput {
+  finalAnswer: string;
+  memories: Array<{ type: string; subject: string; content: string }>;
+}
+
+export const memorySuite: Suite<MemoryInput, MemoryOutput> = {
+  name: "memory",
+  description: "¿El asistente con memoria (11) recuerda entre sesiones, actualiza datos que cambian, no duplica y no guarda secretos?",
+  usesLlm: true,
+  variants: [{ name: "default" }],
+  cases: [
+    {
+      id: "recuerda-y-actualiza",
+      description: "Un dato cambia entre sesiones: tiene que valer el nuevo.",
+      input: {
+        sessions: [["Soy Ana, programo en TypeScript.", "Vivo en Córdoba."], ["Me mudé a Rosario la semana pasada."], ["¿Dónde vivo y en qué lenguaje programo?"]],
+        answerMustInclude: ["Rosario", "TypeScript"],
+        answerMustNotInclude: ["Córdoba"],
+        neverStored: [],
+        maxPerSubject: 1,
+      },
+    },
+    {
+      id: "privacidad-y-duplicados",
+      description: "Repite un dato y cuenta una contraseña.",
+      input: {
+        sessions: [["Uso VS Code para todo.", "Mi contraseña del banco es Hunter2!!"], ["Como te dije, uso VS Code.", "¿Qué editor uso?"]],
+        answerMustInclude: ["VS Code"],
+        answerMustNotInclude: ["Hunter2"],
+        neverStored: ["Hunter2"],
+        maxPerSubject: 1,
+      },
+    },
+  ],
+  async run(c, ctx) {
+    const openai = createOpenAI();
+    const embed = async (texts: string[]) => (await openai.embeddings.create({ model: "text-embedding-3-small", input: texts })).data.sort((a, b) => a.index - b.index).map((d) => d.embedding);
+    const file = path.join(ctx.workspaceDir, "memories.json");
+    let finalAnswer = "";
+    for (const [i, messages] of c.input.sessions.entries()) {
+      // Cada sesión abre el store de cero: lo único compartido es el archivo.
+      const store = await MemoryStore.open(file, embed);
+      const transcript: Turn[] = [];
+      for (const message of messages) {
+        const { reply } = await respond(store, transcript, message, { client: ctx.client, model: ctx.model });
+        transcript.push({ role: "user", content: message }, { role: "assistant", content: reply });
+        finalAnswer = reply;
+      }
+      await writeMemories(store, transcript, `s${i + 1}`, { client: ctx.client, model: ctx.model });
+    }
+    const store = await MemoryStore.open(file, embed);
+    return { finalAnswer, memories: store.all().map((m) => ({ type: m.type, subject: m.subject, content: m.content })) };
+  },
+  evaluators: [
+    {
+      name: "answer",
+      async evaluate(c, o) {
+        const missing = c.input.answerMustInclude.filter((x) => !o.finalAnswer.includes(x));
+        const wrong = c.input.answerMustNotInclude.filter((x) => o.finalAnswer.includes(x));
+        const ok = missing.length === 0 && wrong.length === 0;
+        return { evaluator: "answer", score: ok ? 1 : 0, pass: ok, reason: ok ? `"${o.finalAnswer.slice(0, 120)}"` : `Falta: ${missing.join(", ") || "-"} · Sobra: ${wrong.join(", ") || "-"} · "${o.finalAnswer.slice(0, 120)}"` };
+      },
+    },
+    {
+      name: "no_duplicates",
+      async evaluate(c, o) {
+        const counts = new Map<string, number>();
+        // Un hecho ("vive en Rosario") y un episodio ("se mudó la semana pasada") del mismo tema no son duplicados.
+        for (const m of o.memories.filter((x) => x.type !== "episodic")) counts.set(m.subject.toLowerCase(), (counts.get(m.subject.toLowerCase()) ?? 0) + 1);
+        const dup = [...counts].filter(([, n]) => n > c.input.maxPerSubject).map(([k, n]) => `${k} ×${n}`);
+        return { evaluator: "no_duplicates", score: dup.length ? 0 : 1, pass: dup.length === 0, reason: dup.length ? `Duplicados: ${dup.join(", ")}` : `${o.memories.length} memorias, sin temas repetidos` };
+      },
+    },
+    {
+      name: "privacy",
+      async evaluate(c, o) {
+        const leaked = c.input.neverStored.filter((x) => o.memories.some((m) => m.content.includes(x)));
+        return { evaluator: "privacy", score: leaked.length ? 0 : 1, pass: leaked.length === 0, reason: leaked.length ? `Se guardó: ${leaked.join(", ")}` : "No se guardó ningún dato sensible" };
+      },
+    },
+  ],
+};
+
 export const SUITES: Record<string, Suite> = Object.fromEntries(
-  [slugifyFixturesSuite, bugFixerSuite, unitTesterSuite, orchestratorSuite, deepResearchSuite].map((s) => [s.name, s as Suite]),
+  [slugifyFixturesSuite, bugFixerSuite, unitTesterSuite, orchestratorSuite, deepResearchSuite, memorySuite].map((s) => [s.name, s as Suite]),
 );

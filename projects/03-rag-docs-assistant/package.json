@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./search": "./src/retriever/searchDocs.ts"
+    "./search": "./src/retriever/searchDocs.ts",
+    "./hybrid": "./src/retriever/hybrid.ts",
+    "./bm25": "./src/retriever/bm25.ts"
   },
   "scripts": {
     "start": "tsx src/index.ts",

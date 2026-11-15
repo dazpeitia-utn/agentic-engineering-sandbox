@@ -93,6 +93,23 @@ describe("secretos", () => {
     expect(JSON.stringify(findings)).not.toContain("sk-proj");
   });
 
+  it.each([
+    ["mi contraseña del banco es Hunter2!!", "Hunter2!!"],
+    ["my password is s3cretPass", "s3cretPass"],
+    ["la clave del wifi: Casa2024", "Casa2024"],
+    ["el PIN es 4821", "4821"],
+  ])("tacha credenciales en lenguaje natural: %j", async (text, secret) => {
+    const { request } = await input.checkInput(req(["user", text]), ctx);
+    expect(request!.messages[0].content).not.toContain(secret);
+  });
+
+  it.each(["la contraseña es importante para la seguridad", "olvidé mi clave del correo", "el password manager es útil"])(
+    "no tacha frases sin una credencial: %j",
+    async (text) => {
+      expect((await input.checkInput(req(["user", text]), ctx)).findings).toEqual([]);
+    },
+  );
+
   it("no modifica el request si no hay secretos", async () => {
     expect(await input.checkInput(req(["user", "hola, ¿cómo uso la API?"]), ctx)).toEqual({ findings: [], request: undefined });
   });

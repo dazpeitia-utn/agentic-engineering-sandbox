@@ -15,6 +15,7 @@ npm run evals -w 08-eval-harness -- run bug-fixer --repeats 3              # age
 npm run evals -w 08-eval-harness -- run unit-tester --repeats 2            # agente 01
 npm run evals -w 08-eval-harness -- run orchestrator --variant thorough    # agente 06 con otra variante de prompts
 npm run evals -w 08-eval-harness -- run deep-research                      # agente 09: citas reales, cobertura (juez con fuentes)
+npm run evals -w 08-eval-harness -- run memory --repeats 3                 # agente 11: recordar, actualizar, no duplicar, no guardar secretos
 npm run evals -w 08-eval-harness -- run bug-fixer --only off-by-one --model gpt-4o-mini
 npm run evals -w 08-eval-harness -- compare reports/<suite>/<antes>.json reports/<suite>/<despues>.json
 ```
@@ -99,6 +100,10 @@ Además, la primera corrida encontró un **bug en el propio 06**: su validación
 ### 5. Deep research (09): el juez sin fuentes se equivoca
 
 La suite `deep-research` verifica que el informe exista, que no tenga citas inventadas, que tenga al menos 3 fuentes y párrafos citados, y usa un juez de cobertura. En la primera corrida, el juez le puso **2/5 a un informe correcto**: dijo que un dato de 2024 era "imposible porque estamos en 2023". Juzgaba con su conocimiento de entrenamiento, no con las fuentes. Con la fecha actual y los fragmentos de las fuentes citadas en el prompt, más la instrucción de juzgar solo contra ellos, dio **5/5** y coincidió con los evaluadores determinísticos.
+
+### 6. Memoria (11): umbrales calibrados con datos falsos
+
+La suite `memory` corre sesiones separadas que solo comparten el store y verifica la respuesta final, los duplicados por tema y la privacidad. Encontró que el umbral de relevancia, calibrado con un embedder falso, descartaba memorias correctas con embeddings reales ("¿Dónde vivo?" contra "Vive en Rosario" = 0.22). También encontró un evaluador propio demasiado estricto. Después de corregirlo: 100% (6/6).
 
 > **Costo total de las corridas reales documentadas acá:** unos US$2 de la cuenta de OpenAI.
 
